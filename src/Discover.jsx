@@ -210,6 +210,10 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
   const picked = useRef(null) // swipe after the sheet's exit animation, so its buttons don't vanish mid-animation
   const shared = sharedInterests(me, p)
   useEffect(() => { supabase.rpc('record_view', { p_viewed: p.id }) }, [p.id]) // feeds "who viewed you" (faísca+)
+  const [username, setUsername] = useState(null) // only matches can see it (match_username in supabase/username.sql)
+  useEffect(() => {
+    if (p.matched) supabase.rpc('match_username', { p_other: p.id }).then(({ data }) => setUsername(data))
+  }, [p.id, p.matched])
   // Tap the right/left half of the photo to step through photos, like on the card.
   const step = (e) => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -230,6 +234,7 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
         </div>
         <div className="preview-content">
           <div className="name-line dark"><span>{p.name}, {p.age}</span></div>
+          {username && <span className="username-tag">@{username}</span>}
           <p>{[p.university, p.height_cm && `${p.height_cm} cm`, distanceText(p.distance_km)].filter(Boolean).join(' · ')}</p>
           {p.score && (
             <button className="match-badge static" onClick={() => setShowParts(!showParts)} aria-expanded={showParts}>

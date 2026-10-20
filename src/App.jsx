@@ -276,7 +276,7 @@ function Shell({ me, setMe }) {
           )}
           {page === 'explore' && <Explore deck={deckApi.deck} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} />}
           {page === 'messages' && (
-            <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} />
+            <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} openSheet={setSheet} />
           )}
           {page === 'profile' && (
             <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}

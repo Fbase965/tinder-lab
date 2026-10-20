@@ -657,3 +657,7 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
 .plus-tag { position: absolute; top: 4px; right: calc(50% - 22px); display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #ff6d6f, #c2366f); font-size: 11px; font-weight: 800; line-height: 1; }
 .side-link .plus-tag { position: static; margin-left: auto; width: 18px; height: 18px; }
 @media (max-width: 700px) { .locked-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .explore-locked { min-height: 480px; } }
+.username-tag { display: inline-block; margin: -2px 0 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
+button.chat-person { border: 0; padding: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.username-form { display: grid; gap: 12px; }
+.username-form .modal-heading { margin-bottom: 8px; }

@@ -29,6 +29,9 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
   const [likes, setLikes] = useState(null)
   const [legal, setLegal] = useState(null)
   const [admin, setAdmin] = useState(false)
+  const [username, setUsername] = useState(null)
+  const [renaming, setRenaming] = useState(false)
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setUsername(data.session?.user.email?.split('@')[0] ?? null)) }, [])
 
   useEffect(() => {
     supabase.rpc('my_stats').then(({ data }) => setLikes(data?.[0]?.likes_received ?? null))
@@ -59,6 +62,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
           </div>
           <div className="preview-content">
             <div className="name-line dark"><span>{me.name}, {me.age}</span></div>
+            {username && <span className="username-tag">@{username}</span>}
             <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}
             {me.bio && <blockquote>“{me.bio}”</blockquote>}
@@ -96,6 +100,11 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <Icon name="chevron" />
             </button>
             {privacy && <PrivacyPanel uid={me.id} hasLocation={hasLocation} setHasLocation={setHasLocation} toast={toast} />}
+            <button onClick={() => setRenaming(true)}>
+              <i className="mint"><Icon name="user" /></i>
+              <div><strong>Username</strong><span>{username ? `@${username} · usado para entrar` : '…'}</span></div>
+              <Icon name="chevron" />
+            </button>
             <NotificationsRow toast={toast} />
             {plan.isAdmin && (
               <button onClick={() => setAdmin(true)}>
@@ -116,6 +125,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
         {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
+        {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
       </div>
     </div>
   )
@@ -401,5 +411,46 @@ export function UniversityField({ value, onChange, required }) {
       </select>
       {other && <input value={value} onChange={(e) => onChange(e.target.value)} maxLength={80} placeholder="Nome da universidade" required={required} autoFocus />}
     </label>
+  )
+}
+
+const USERNAME_ERRORS = {
+  username_invalid: 'Usa 3 a 20 letras, números, _ ou .',
+  username_taken: 'Esse username já existe.',
+  username_recent: 'Só podes mudar o username uma vez por semana.',
+}
+
+// change_username() in supabase/username.sql; the login email follows the username.
+function UsernameModal({ current, onClose, onChanged, toast }) {
+  const [value, setValue] = useState(current ?? '')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <Modal className="filter-modal" onClose={onClose}>
+      {(close) => (
+        <form className="username-form" onSubmit={async (e) => {
+          e.preventDefault()
+          const next = value.trim().toLowerCase()
+          if (next === current) return close()
+          setBusy(true)
+          const { data, error } = await supabase.rpc('change_username', { p_new: next })
+          if (error) { setBusy(false); return setErr(Object.entries(USERNAME_ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? error.message) }
+          await supabase.auth.refreshSession() // new email in the session
+          onChanged(data); toast(`Username alterado para @${data}`); close()
+        }}>
+          <div className="modal-heading">
+            <div><span className="kicker">CONTA</span><div className="modal-title">Mudar username</div></div>
+            <button type="button" className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+          </div>
+          <label className="field"><span>Novo username</span>
+            <input value={value} onChange={(e) => { setValue(e.target.value); setErr('') }} required autoFocus
+              pattern="[A-Za-z0-9_.]{3,20}" title="3–20 letras, números, _ ou ." autoCapitalize="none" autoComplete="username" />
+          </label>
+          <p className="hint">Passas a entrar com o novo username (a password fica igual). Só os teus matches o veem. Podes mudá-lo uma vez por semana.</p>
+          {err && <p className="form-error">{err}</p>}
+          <button className="primary-button" disabled={busy}>{busy ? 'A guardar…' : 'Guardar'}</button>
+        </form>
+      )}
+    </Modal>
   )
 }

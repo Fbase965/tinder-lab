@@ -4,7 +4,7 @@ import { Icon } from './icons'
 import { Avatar } from './App'
 import { needsReply, shortTime, dayLabel } from './data'
 
-export function Messages({ me, matches, selected, onSelect, toast }) {
+export function Messages({ me, matches, selected, onSelect, toast, openSheet }) {
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const list = matches.list
@@ -63,13 +63,14 @@ export function Messages({ me, matches, selected, onSelect, toast }) {
         </div>
       </aside>
       {current
-        ? <Chat key={current.id} me={me} other={current} onBack={() => onSelect(null)} onGone={() => { onSelect(null); matches.reload() }} toast={toast} />
+        ? <Chat key={current.id} me={me} other={current} onBack={() => onSelect(null)} onGone={() => { onSelect(null); matches.reload() }} toast={toast}
+            openProfile={() => openSheet({ ...current, matched: true })} />
         : <section className="chat-panel chat-empty"><Icon name="message" size={40} /><p>Escolhe uma conversa</p></section>}
     </div>
   )
 }
 
-function Chat({ me, other, onBack, onGone, toast }) {
+function Chat({ me, other, onBack, onGone, toast, openProfile }) {
   const [a, b] = [me.id, other.id].sort()
   const [msgs, setMsgs] = useState(null)
   const [text, setText] = useState('')
@@ -121,14 +122,15 @@ function Chat({ me, other, onBack, onGone, toast }) {
     <section className="chat-panel">
       <header>
         <button className="icon-button back-button" onClick={onBack} aria-label="Voltar"><Icon name="back" /></button>
-        <div className="chat-person">
+        <button className="chat-person" onClick={openProfile} aria-label={`Ver o perfil de ${other.name}`}>
           <i className="avatar-wrap"><Avatar p={other} /></i>
           <div><strong>{other.name}</strong><span>{other.age} anos{other.university && ` · ${other.university}`}</span></div>
-        </div>
+        </button>
         <div className="menu-wrap">
           <button className="icon-button" aria-label="Mais opções" onClick={() => setMenu(!menu)}><Icon name="more" /></button>
           {menu && (
             <div className="menu" onClick={() => setMenu(false)}>
+              <button onClick={openProfile}>Ver perfil</button>
               <button onClick={unmatch}>Desfazer match</button>
               <button onClick={() => block(false)}>Bloquear</button>
               <button className="danger" onClick={() => block(true)}>Denunciar</button>
