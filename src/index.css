@@ -669,3 +669,13 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .empty-button svg { flex: none; }
 .empty-card .empty-button svg { color: inherit; }
 .recycle-link { margin-top: 10px; font-size: 14px; }
+/* messages list fills the screen on phones; empty text lines up with the heading */
+.conversation-list > .empty-note { padding: 24px; text-align: center; }
+@media (max-width: 700px) {
+  .messages-page:not(.has-chat) .conversation-list { min-height: calc(100dvh - 58px - 64px - var(--safe-t) - var(--safe-b)); }
+  .messages-page:not(.has-chat) .chat-empty { display: none; }
+}
+.messages-empty { display: grid; justify-items: center; gap: 8px; padding: 60px 28px; text-align: center; animation: rise .4s var(--ease-out); }
+.messages-empty svg { color: var(--coral); opacity: .85; }
+.messages-empty strong { font-family: 'Manrope'; font-size: 17px; }
+.messages-empty p { max-width: 260px; color: var(--muted); font-size: 13px; line-height: 1.5; }

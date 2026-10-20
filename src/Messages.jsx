@@ -34,7 +34,13 @@ export function Messages({ me, matches, selected, onSelect, toast, openSheet }) 
             <input autoFocus placeholder="Pesquisar conversas" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
         )}
-        {!list.length && <p className="empty-note">Ainda não tens matches. Continua a descobrir!</p>}
+        {!list.length && (
+          <div className="messages-empty">
+            <Icon name="message" size={34} />
+            <strong>Ainda não tens matches</strong>
+            <p>Quando gostares de alguém e essa pessoa gostar de ti, a conversa aparece aqui.</p>
+          </div>
+        )}
         {fresh.length > 0 && (
           <div className="new-matches">
             <span>Novos matches</span>
