@@ -88,9 +88,14 @@ export function NotificationsRow({ toast }) {
   const [busy, setBusy] = useState(false)
   useEffect(() => { pushEnabled().then(setOn) }, [])
   const needsInstall = isPhone() && !isStandalone() && (isIOS() || !pushSupported())
+  // Once denied, a site can't ask again: only the phone's settings can undo it.
+  const blocked = !needsInstall && pushSupported() && Notification.permission === 'denied'
+  const fix = isIOS() ? 'Definições do iPhone → Notificações → faísca → Permitir notificações'
+    : 'Definições do site no browser (cadeado ao lado do endereço) → Notificações → Permitir'
 
   const click = async () => {
     if (needsInstall) return openInstall()
+    if (blocked) return toast(`Notificações bloqueadas. Ativa em: ${fix}`)
     setBusy(true)
     try {
       if (on) { await disablePush(); setOn(false); toast('Notificações desativadas') }
@@ -101,7 +106,7 @@ export function NotificationsRow({ toast }) {
   return <>
     <button onClick={click} disabled={busy}>
       <i className="coral"><Icon name="bell" /></i>
-      <div><strong>Notificações</strong><span>{needsInstall ? 'Instala a app para as ativar' : on ? 'Ativas · matches e mensagens' : 'Desativadas'}</span></div>
+      <div><strong>Notificações</strong><span>{needsInstall ? 'Instala a app para as ativar' : blocked ? `Bloqueadas · ${fix}` : on ? 'Ativas · matches e mensagens' : 'Desativadas · toca para ativar'}</span></div>
       {needsInstall ? <Icon name="chevron" /> : <span className={`switch-pill ${on ? 'on' : ''}`} aria-hidden="true" />}
     </button>
     {isPhone() && !isStandalone() && !needsInstall && (
