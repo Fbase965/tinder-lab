@@ -2,36 +2,37 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { rank } from './algorithm'
 
-export const SUPER_PER_DAY = 3
 
 // Ranked deck plus swipe/rewind. Shared by Discover and Explore so both see the same people.
-export function useDeck(me, toast) {
+// plan: usePlan() (Premium.jsx). Limits are enforced by the database; these copies only drive the UI.
+export function useDeck(me, toast, plan, onLimit) {
   const [deck, setDeck] = useState(null)
   const [last, setLast] = useState(null) // { card, kind } of the most recent swipe, for rewind
-  const [superLeft, setSuperLeft] = useState(SUPER_PER_DAY)
+  const [superLeft, setSuperLeft] = useState(1)
+  useEffect(() => { if (plan.loaded) setSuperLeft(plan.superLeft) }, [plan.loaded, plan.superLeft])
 
   const reload = useCallback(() => supabase.rpc('deck').then(({ data, error }) => {
     if (error) toast(error.message)
     setDeck(error ? [] : rank(me, data))
   }), [me, toast])
 
-  useEffect(() => {
-    reload()
-    const since = new Date(Date.now() - 864e5).toISOString()
-    supabase.from('swipes').select('*', { count: 'exact', head: true })
-      .eq('swiper', me.id).eq('super', true).gt('created_at', since)
-      .then(({ count }) => setSuperLeft(Math.max(0, SUPER_PER_DAY - (count ?? 0))))
-  }, [reload, me.id])
+  useEffect(() => { reload() }, [reload, plan.premium]) // premium reveals who liked you in the deck
 
   // Returns 'match', 'ok' or null (failed).
   const swipe = async (card, kind) => {
-    if (kind === 'super' && superLeft <= 0) { toast(`Já usaste os ${SUPER_PER_DAY} Super Likes de hoje`); return null }
-    setDeck((d) => d.filter((x) => x.id !== card.id))
+    if (kind === 'super' && superLeft <= 0) {
+      toast(plan.premium ? 'Já usaste os 5 Super Likes de hoje' : 'Já usaste o teu Super Like de hoje. Com faísca+ tens 5.')
+      if (!plan.premium) onLimit()
+      return null
+    }
+    setDeck((d) => d?.filter((x) => x.id !== card.id))
     const liked = kind !== 'nope'
     const { error } = await supabase.from('swipes').insert({ swiper: me.id, target: card.id, liked, super: kind === 'super' })
     if (error) { // e.g. super_like_limit from the database: put the card back
-      setDeck((d) => [card, ...d])
-      toast(error.message.includes('super_like_limit') ? 'Já não tens Super Likes hoje' : error.message)
+      setDeck((d) => (card.swipeable ? d : [card, ...d])) // swipeable = opened from the liked-you list, not the deck
+      if (error.message.includes('like_limit') && !error.message.includes('super')) {
+        toast('Chegaste aos 50 likes de hoje. Com faísca+ são ilimitados.'); onLimit()
+      } else toast(error.message.includes('super_like_limit') ? 'Já não tens Super Likes hoje' : error.message)
       return null
     }
     setLast({ card, kind })

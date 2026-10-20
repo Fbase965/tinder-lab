@@ -8,6 +8,7 @@ import { Messages } from './Messages'
 import { Profile, ProfileForm, PreferencesModal, MIN_AGE } from './Profile'
 import { LegalModal } from './Legal'
 import { InstallPrompt, NotifyPrompt, markJustSignedUp } from './Install'
+import { usePlan, PremiumSheet, BoostButton } from './Premium'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -152,14 +153,19 @@ const NAV = [
 
 function Shell({ me, setMe }) {
   // Notification taps open /?chat=<id> (public/sw.js).
-  const deepChat = new URLSearchParams(location.search).get('chat')
+  const params = new URLSearchParams(location.search)
+  const deepChat = params.get('chat')
+  const deepPremium = params.get('premium') // back from Stripe: 'ok' after paying, '1' to reopen the sheet
   const [page, setPage] = useState(deepChat ? 'messages' : 'discover')
   const [toastText, setToastText] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
   const [sheet, setSheet] = useState(null) // profile shown in the details sheet
   const [matched, setMatched] = useState(null)
   const [chatWith, setChatWith] = useState(deepChat)
-  useEffect(() => { if (deepChat) history.replaceState(null, '', '/') }, [deepChat])
+  useEffect(() => { if (deepChat || deepPremium) history.replaceState(null, '', '/') }, [deepChat, deepPremium])
+  const plan = usePlan()
+  const [premiumOpen, setPremiumOpen] = useState(deepPremium === '1')
+  const openPremium = () => setPremiumOpen(true)
   const [hasLocation, setHasLocation] = useState(false)
 
   const toast = useCallback((t) => setToastText(t), [])
@@ -173,7 +179,14 @@ function Shell({ me, setMe }) {
     supabase.from('locations').select('lat').eq('id', me.id).maybeSingle().then(({ data }) => setHasLocation(data?.lat != null))
   }, [me.id])
 
-  const deckApi = useDeck(me, toast)
+  const deckApi = useDeck(me, toast, plan, openPremium)
+  const reloadPlan = plan.reload
+  useEffect(() => { // the Stripe webhook can land a few seconds after the redirect
+    if (deepPremium !== 'ok') return
+    toast('Pagamento recebido. A ativar o faísca+…')
+    const ts = [2000, 6000, 15000].map((ms) => setTimeout(reloadPlan, ms))
+    return () => ts.forEach(clearTimeout)
+  }, [deepPremium, toast, reloadPlan])
   const matches = useMatches(me)
   const unread = (matches.list ?? []).filter((m) => needsReply(me, m)).length
   const complete = completeness(me, hasLocation)
@@ -183,6 +196,7 @@ function Shell({ me, setMe }) {
   // Swipe from anywhere (card, explore grid, details sheet) goes through here.
   const swipe = async (card, kind) => {
     const res = await deckApi.swipe(card, kind)
+    if (res) plan.reload() // likes / Super Likes left
     if (res === 'match') { setMatched(card); matches.reload(); navigator.vibrate?.([20, 60, 30]) }
     else if (res && kind !== 'nope') toast(kind === 'super' ? `Super Like enviado a ${card.name}` : `Gostaste de ${card.name}`)
     return res
@@ -212,24 +226,29 @@ function Shell({ me, setMe }) {
 
       <header className="mobile-header">
         <Brand />
-        <button className="icon-button" aria-label="Preferências" onClick={() => setFilterOpen(true)}>
-          <Icon name="sliders" size={19} />
-        </button>
+        <div className="header-actions">
+          <BoostButton plan={plan} openPremium={openPremium} toast={toast} compact />
+          <button className="icon-button" aria-label="Preferências" onClick={() => setFilterOpen(true)}>
+            <Icon name="sliders" size={19} />
+          </button>
+        </div>
       </header>
 
       <section className="page-shell">
         <div key={page} className="page-enter">
           {page === 'discover' && (
-            <Discover me={me} deckApi={deckApi} swipe={swipe} complete={complete} paused={!!(matched || sheet || filterOpen)}
-              openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')} />
+            <Discover me={me} deckApi={deckApi} swipe={swipe} complete={complete} paused={!!(matched || sheet || filterOpen || premiumOpen)}
+              openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')}
+              boost={<BoostButton plan={plan} openPremium={openPremium} toast={toast} />} />
           )}
-          {page === 'explore' && <Explore me={me} deck={deckApi.deck} swipe={swipe} openSheet={setSheet} />}
+          {page === 'explore' && <Explore deck={deckApi.deck} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} />}
           {page === 'messages' && (
             <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} />
           )}
           {page === 'profile' && (
             <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}
-              matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast} />
+              matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast}
+              plan={plan} openPremium={openPremium} />
           )}
         </div>
       </section>
@@ -245,6 +264,7 @@ function Shell({ me, setMe }) {
       </nav>
 
       {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
+      {premiumOpen && <PremiumSheet plan={plan} onClose={() => setPremiumOpen(false)} toast={toast} />}
       <InstallPrompt />
       <NotifyPrompt toast={toast} />
       {filterOpen && (
@@ -253,7 +273,7 @@ function Shell({ me, setMe }) {
       )}
       {sheet && (
         <ProfileSheet me={me} p={sheet} onClose={() => setSheet(null)}
-          onSwipe={deckApi.deck?.some((c) => c.id === sheet.id) ? (kind) => swipe(sheet, kind) : null} />
+          onSwipe={sheet.swipeable || deckApi.deck?.some((c) => c.id === sheet.id) ? (kind) => swipe(sheet, kind) : null} />
       )}
       {matched && (
         <Modal className="match-modal" backdropClass="match-overlay" onClose={() => setMatched(null)}>

@@ -2,18 +2,15 @@ import { useState } from 'react'
 import { Icon } from './icons'
 import { Avatar } from './App'
 import { matchPercent } from './algorithm'
-import { distanceText } from './Discover'
+import { PeopleStrip } from './Premium'
 
-export function Explore({ me, deck, swipe, openSheet }) {
+export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
   const [query, setQuery] = useState('')
-  const [likedMeOnly, setLikedMeOnly] = useState(false)
   const [showAll, setShowAll] = useState(false)
   if (!deck) return <p className="loading">A carregar…</p>
 
   const q = query.trim().toLowerCase()
-  const likedMe = deck.filter((c) => c.likes_me)
   const list = deck
-    .filter((c) => !likedMeOnly || c.likes_me)
     .filter((c) => !q || c.name.toLowerCase().includes(q) || c.job?.toLowerCase().includes(q) || c.interests.some((i) => i.includes(q)))
   const shown = showAll ? list : list.slice(0, 9)
 
@@ -29,21 +26,10 @@ export function Explore({ me, deck, swipe, openSheet }) {
           <input aria-label="Pesquisar" placeholder="Pesquisar interesses" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
       </div>
-      <div className="featured-banner">
-        <div>
-          <span>{likedMeOnly ? 'A MOSTRAR' : 'GOSTAM DE TI'}</span>
-          <strong>{likedMe.length ? `${likedMe.length} ${likedMe.length === 1 ? 'pessoa já gostou' : 'pessoas já gostaram'} de ti` : 'Ainda ninguém novo'}</strong>
-          <p>{likedMe.length ? 'Dá-lhes um gosto de volta e o match é imediato.' : 'Quando alguém gostar de ti, aparece aqui primeiro.'}</p>
-          {likedMe.length > 0 && (
-            <button onClick={() => setLikedMeOnly(!likedMeOnly)}>{likedMeOnly ? 'Ver toda a gente' : 'Ver quem gostou'}</button>
-          )}
-        </div>
-        <div className="featured-portraits">
-          {(likedMe.length ? likedMe : deck).slice(0, 3).map((c) => <Avatar key={c.id} p={c} />)}
-        </div>
-      </div>
+      <PeopleStrip kind="likes" plan={plan} openPremium={openPremium} openSheet={openSheet} refreshKey={deck.length} />
+      <PeopleStrip kind="views" plan={plan} openPremium={openPremium} openSheet={openSheet} />
       <div className="section-row">
-        <div className="section-title">{likedMeOnly ? 'Gostaram de ti' : 'Perfis para ti'}</div>
+        <div className="section-title">Perfis para ti</div>
         {list.length > 9 && (
           <button onClick={() => setShowAll(!showAll)}>{showAll ? 'Ver menos' : `Ver todos (${list.length})`} <Icon name="chevron" size={16} /></button>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from './icons'
+import { supabase } from './supabase'
 import { Avatar, Modal } from './App'
 import { matchPercent, sharedInterests, WEIGHTS } from './algorithm'
 
@@ -12,7 +13,7 @@ const PART_LABELS = {
 // deck() only returns steps (5, 10, 25 … km) so nobody can work out where someone lives.
 export const distanceText = (km) => (km == null ? null : `a menos de ${km} km`)
 
-export function Discover({ me, deckApi, swipe, complete, paused, openFilters, openSheet, goProfile }) {
+export function Discover({ me, deckApi, swipe, complete, paused, openFilters, openSheet, goProfile, boost }) {
   const { deck, rewind, canRewind, superLeft, reload } = deckApi
   const [drag, setDrag] = useState({ x: 0, y: 0 })
   const [leaving, setLeaving] = useState(null)
@@ -79,9 +80,12 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
           <span className="kicker">DESCOBERTA</span>
           <div className="page-title">Perto de ti</div>
         </div>
-        <button className="filter-trigger" onClick={openFilters}>
-          <Icon name="sliders" size={19} /><span>Preferências</span>
-        </button>
+        <div className="header-actions">
+          {boost}
+          <button className="filter-trigger" onClick={openFilters}>
+            <Icon name="sliders" size={19} /><span>Preferências</span>
+          </button>
+        </div>
       </div>
       <div className="discover-layout">
         <div className="swipe-column">
@@ -205,6 +209,7 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
   const [showParts, setShowParts] = useState(false)
   const picked = useRef(null) // swipe after the sheet's exit animation, so its buttons don't vanish mid-animation
   const shared = sharedInterests(me, p)
+  useEffect(() => { supabase.rpc('record_view', { p_viewed: p.id }) }, [p.id]) // feeds "who viewed you" (faísca+)
   // Tap the right/left half of the photo to step through photos, like on the card.
   const step = (e) => {
     const r = e.currentTarget.getBoundingClientRect()

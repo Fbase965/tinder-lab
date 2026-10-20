@@ -16,7 +16,7 @@ npm run dev
 - New project: run `supabase/schema.sql` in the SQL Editor.
 - Turn off **Authentication → Email → Confirm email** (login is username + password).
 - Existing project: run only the migration files you haven't applied yet
-  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, in that order).
+  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, `premium.sql`, in that order).
 - `storage.sql` is only for the old Supabase photo bucket; new photos go to Azure.
 
 ## Photos (Azure Blob Storage)
@@ -32,6 +32,17 @@ The account name is also hardcoded in `supabase/launch.sql` (photo URL check) an
 Put the same random `PUSH_SECRET` in that SQL and on Vercel, plus a VAPID key pair
 (`npx web-push generate-vapid-keys`): `VITE_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 On iPhone, notifications only work once the site is added to the home screen (iOS 16.4+).
+
+## faísca+ (premium)
+
+`supabase/premium.sql`: who liked/viewed you, like limits (free 50/day, 1 Super Like; premium unlimited, 5),
+boost, unlimited rewind, admin grants. Put a random `BILLING_SECRET` in that SQL and on Vercel, and add
+yourself to `admins` (last line of the file). Admins get Perfil → Administração to give or remove faísca+.
+
+Stripe: create a monthly Price, then set `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `VITE_PREMIUM_PRICE`
+(label, e.g. `4,99 €/mês`) on Vercel; add a webhook to `/api/stripe-webhook` for `checkout.session.completed`
+and `customer.subscription.*`, and set its signing secret as `STRIPE_WEBHOOK_SECRET`. Enable the customer portal.
+Charging money needs a registered business (Finanças) and Vercel Pro (Hobby is non-commercial).
 
 ## Captcha (optional)
 

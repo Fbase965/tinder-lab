@@ -5,6 +5,7 @@ import { Avatar, Modal } from './App'
 import { LegalModal } from './Legal'
 import { NotificationsRow } from './Install'
 import { disablePush } from './pwa'
+import { AdminPanel } from './Premium'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -21,11 +22,12 @@ const dbError = (e) => Object.entries(DB_ERRORS).find(([k]) => e.message.include
 // Latest birth date allowed today, as yyyy-mm-dd for <input type="date" max>.
 const maxBirthDate = () => { const d = new Date(); d.setFullYear(d.getFullYear() - MIN_AGE); return d.toISOString().slice(0, 10) }
 
-export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast }) {
+export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast, plan, openPremium }) {
   const [editing, setEditing] = useState(false)
   const [privacy, setPrivacy] = useState(false)
   const [likes, setLikes] = useState(null)
   const [legal, setLegal] = useState(null)
+  const [admin, setAdmin] = useState(false)
 
   useEffect(() => {
     supabase.rpc('my_stats').then(({ data }) => setLikes(data?.[0]?.likes_received ?? null))
@@ -67,6 +69,14 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <div><strong>{matchesCount}</strong><span>Matches</span></div>
             <div><strong>{complete}%</strong><span>Completo</span></div>
           </div>
+          <button className={`premium-row ${plan.premium ? 'on' : ''}`} onClick={openPremium}>
+            <i><Icon name="brand" size={22} filled /></i>
+            <div>
+              <strong>faísca<b>+</b></strong>
+              <span>{plan.premium ? `Ativo até ${new Date(plan.until).toLocaleDateString('pt-PT')}` : 'Vê quem gostou de ti, likes ilimitados e mais'}</span>
+            </div>
+            <Icon name="chevron" />
+          </button>
           <div className="settings-card">
             <span className="settings-label">CONTA</span>
             <button onClick={() => setEditing(true)}>
@@ -86,6 +96,13 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             </button>
             {privacy && <PrivacyPanel uid={me.id} hasLocation={hasLocation} setHasLocation={setHasLocation} toast={toast} />}
             <NotificationsRow toast={toast} />
+            {plan.isAdmin && (
+              <button onClick={() => setAdmin(true)}>
+                <i className="purple"><Icon name="shield" /></i>
+                <div><strong>Administração</strong><span>Dar ou remover faísca+</span></div>
+                <Icon name="chevron" />
+              </button>
+            )}
           </div>
           <button className="logout-button" onClick={async () => { await disablePush().catch(() => {}); supabase.auth.signOut() }}>
             <Icon name="logout" size={19} /> Terminar sessão
@@ -97,6 +114,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
           </div>
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
+        {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
       </div>
     </div>
   )
