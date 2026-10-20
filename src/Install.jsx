@@ -15,7 +15,7 @@ const PUSH_ASKED = 'faisca-push-asked'
 const OPEN_EVENT = 'faisca-open-install'
 
 export const markJustSignedUp = () => { if (isPhone() && !isStandalone()) flag.set(INSTALL, 'pending') }
-const openInstall = () => window.dispatchEvent(new Event(OPEN_EVENT))
+export const openInstall = () => window.dispatchEvent(new Event(OPEN_EVENT))
 
 // Bottom sheet that turns the site into a home-screen app: native dialog on Android/Chrome, steps on iOS.
 export function InstallPrompt() {
@@ -47,6 +47,7 @@ export function InstallPrompt() {
             {steps.map(([icon, text], i) => <li key={i}><i><Icon name={icon} size={20} filled={icon === 'brand'} /></i><span>{text}</span></li>)}
           </ol>
         )}
+        {isIOS() && <p className="install-note">No iPhone, a app do ecrã principal não partilha a sessão com o Safari: entra lá uma vez com o teu username e password.</p>}
         <button className="link" onClick={close}>{native ? 'Agora não' : 'Percebi'}</button>
       </>}
     </Modal>

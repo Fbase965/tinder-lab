@@ -93,7 +93,7 @@ export function useMatches(me) {
 export const needsReply = (me, m) => !m.last || m.last.sender !== me.id
 
 export function completeness(p, hasLocation) {
-  const checks = [p.photos?.length >= 3, !!p.bio, !!p.job, p.interests?.length >= 3, !!p.height_cm, hasLocation]
+  const checks = [p.photos?.length >= 3, !!p.bio, !!p.university, p.interests?.length >= 3, !!p.height_cm, hasLocation]
   return Math.round((100 * checks.filter(Boolean).length) / checks.length)
 }
 

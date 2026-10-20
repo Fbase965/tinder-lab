@@ -6,6 +6,7 @@ import { LegalModal } from './Legal'
 import { NotificationsRow } from './Install'
 import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
+import { UNIVERSITIES, OTHER, isListed } from './universities'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -58,7 +59,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
           </div>
           <div className="preview-content">
             <div className="name-line dark"><span>{me.name}, {me.age}</span></div>
-            <p>{[me.job, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua profissão e altura'}</p>
+            <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}
             {me.bio && <blockquote>“{me.bio}”</blockquote>}
           </div>
@@ -81,7 +82,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <span className="settings-label">CONTA</span>
             <button onClick={() => setEditing(true)}>
               <i className="coral"><Icon name="user" /></i>
-              <div><strong>Informações pessoais</strong><span>Nome, idade, profissão, fotos e bio</span></div>
+              <div><strong>Informações pessoais</strong><span>Nome, idade, universidade, fotos e bio</span></div>
               <Icon name="chevron" />
             </button>
             <button onClick={openFilters}>
@@ -214,7 +215,7 @@ const HEIGHT_FIELDS = ['height_cm']
 const blankNulls = (row, keys) => Object.fromEntries(keys.map((k) => [k, row[k] ?? '']))
 
 export function ProfileForm({ uid, onSaved }) {
-  const [f, setF] = useState({ name: '', birth_date: '', gender: 'man', looking_for: 'women', bio: '', job: '', photos: [], interests: '', height_cm: '' })
+  const [f, setF] = useState({ name: '', birth_date: '', gender: 'man', looking_for: 'women', bio: '', university: '', photos: [], interests: '', height_cm: '' })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const saved = useRef([])
@@ -223,7 +224,7 @@ export function ProfileForm({ uid, onSaved }) {
     supabase.from('profiles').select('*').eq('id', uid).maybeSingle().then(({ data }) => {
       if (!data) return
       saved.current = data.photos
-      setF({ ...data, job: data.job ?? '', interests: data.interests.join(', '), ...blankNulls(data, [...HEIGHT_FIELDS, 'birth_date']) })
+      setF({ ...data, university: data.university ?? '', interests: data.interests.join(', '), ...blankNulls(data, [...HEIGHT_FIELDS, 'birth_date']) })
       setLocked(!!data.birth_date)
     })
   }, [uid])
@@ -235,7 +236,7 @@ export function ProfileForm({ uid, onSaved }) {
     setBusy(true)
     const row = {
       id: uid, name: f.name.trim(), birth_date: f.birth_date, gender: f.gender, looking_for: f.looking_for,
-      bio: f.bio, job: f.job.trim(), photos: f.photos,
+      bio: f.bio, university: f.university.trim() || null, photos: f.photos,
       height_cm: f.height_cm === '' ? null : Number(f.height_cm),
       interests: [...new Set(f.interests.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))],
     }
@@ -259,7 +260,7 @@ export function ProfileForm({ uid, onSaved }) {
         <label className="field"><span>Data de nascimento</span>
           <input type="date" value={f.birth_date} onChange={set('birth_date')} required disabled={locked} max={maxBirthDate()} min="1920-01-01" />
         </label>
-        <label className="field"><span>Profissão</span><input value={f.job} onChange={set('job')} maxLength={60} placeholder="ex: Designer" /></label>
+        <UniversityField value={f.university} onChange={(university) => setF((x) => ({ ...x, university }))} required />
         <label className="field"><span>Altura (cm)</span><input type="number" min="120" max="230" value={f.height_cm} onChange={set('height_cm')} placeholder="opcional" /></label>
       </div>
       <span className="field-label">Sou</span>
@@ -383,4 +384,22 @@ function DeleteAccount({ me, toast }) {
     }
   }
   return <button className="link danger" onClick={run} disabled={busy}>{busy ? 'A apagar…' : 'Apagar conta'}</button>
+}
+
+// Picker from the list, or free text after choosing "Outra".
+export function UniversityField({ value, onChange, required }) {
+  const [other, setOther] = useState(() => !!value && !isListed(value))
+  return (
+    <label className="field university-field"><span>Universidade</span>
+      <select value={other ? OTHER : value} required={required}
+        onChange={(e) => { const v = e.target.value; setOther(v === OTHER); onChange(v === OTHER ? '' : v) }}>
+        <option value="">Escolhe…</option>
+        {UNIVERSITIES.map(([group, list]) => (
+          <optgroup key={group} label={group}>{list.map((u) => <option key={u}>{u}</option>)}</optgroup>
+        ))}
+        <option value={OTHER}>Outra…</option>
+      </select>
+      {other && <input value={value} onChange={(e) => onChange(e.target.value)} maxLength={80} placeholder="Nome da universidade" required={required} autoFocus />}
+    </label>
+  )
 }

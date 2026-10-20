@@ -123,7 +123,7 @@ function Chat({ me, other, onBack, onGone, toast }) {
         <button className="icon-button back-button" onClick={onBack} aria-label="Voltar"><Icon name="back" /></button>
         <div className="chat-person">
           <i className="avatar-wrap"><Avatar p={other} /></i>
-          <div><strong>{other.name}</strong><span>{other.age} anos{other.job && ` · ${other.job}`}</span></div>
+          <div><strong>{other.name}</strong><span>{other.age} anos{other.university && ` · ${other.university}`}</span></div>
         </div>
         <div className="menu-wrap">
           <button className="icon-button" aria-label="Mais opções" onClick={() => setMenu(!menu)}><Icon name="more" /></button>

@@ -11,7 +11,7 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
 
   const q = query.trim().toLowerCase()
   const list = deck
-    .filter((c) => !q || c.name.toLowerCase().includes(q) || c.job?.toLowerCase().includes(q) || c.interests.some((i) => i.includes(q)))
+    .filter((c) => !q || c.name.toLowerCase().includes(q) || c.university?.toLowerCase().includes(q) || c.interests.some((i) => i.includes(q)))
   const shown = showAll ? list : list.slice(0, 9)
 
   return (
@@ -48,8 +48,8 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
               <strong>{c.name}, {c.age}</strong>
               <span>
                 {c.distance_km != null && <><Icon name="location" size={12} /> {`< ${c.distance_km} km`}</>}
-                {c.distance_km != null && c.job && ' · '}
-                {c.job}
+                {c.distance_km != null && c.university && ' · '}
+                {c.university}
               </span>
             </div>
           </article>

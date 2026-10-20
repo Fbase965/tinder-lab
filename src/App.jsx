@@ -5,9 +5,10 @@ import { useDeck, useMatches, needsReply, completeness } from './data'
 import { Discover, ProfileSheet } from './Discover'
 import { Explore } from './Explore'
 import { Messages } from './Messages'
-import { Profile, ProfileForm, PreferencesModal, MIN_AGE } from './Profile'
+import { Profile, ProfileForm, PreferencesModal, MIN_AGE, UniversityField } from './Profile'
 import { LegalModal } from './Legal'
-import { InstallPrompt, NotifyPrompt, markJustSignedUp } from './Install'
+import { InstallPrompt, NotifyPrompt, markJustSignedUp, openInstall } from './Install'
+import { isIOS, isStandalone } from './pwa'
 import { usePlan, PremiumSheet, BoostButton } from './Premium'
 
 export default function App() {
@@ -105,6 +106,13 @@ function Auth() {
         <div className="aside-title">Pessoas reais.<br />Boas <em>conversas.</em></div>
       </aside>
       <form key={signUp} className={`auth-card ${signUp ? 'signup' : ''}`} onSubmit={submit}>
+        {signUp && isIOS() && !isStandalone() && (
+          // iOS keeps home-screen apps' storage apart from Safari: creating the account inside the app keeps you signed in there.
+          <button type="button" className="ios-tip" onClick={openInstall}>
+            <Icon name="addSquare" size={20} />
+            <span><b>Vais usar no iPhone?</b> Instala a app primeiro e cria a conta lá, para ficares logo com sessão iniciada.</span>
+          </button>
+        )}
         <span className="kicker">{signUp ? 'NOVA CONTA' : 'BEM-VINDO DE VOLTA'}</span>
         <div className="page-title">{signUp ? 'Cria a tua conta' : 'Entrar'}</div>
         <p className="sub">{signUp ? 'Escolhe um username e uma password. A seguir crias o teu perfil.' : 'Entra com o teu username.'}</p>
@@ -140,6 +148,7 @@ function Auth() {
         </p>
       </form>
       {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
+      <InstallPrompt />
     </div>
   )
 }
@@ -265,6 +274,7 @@ function Shell({ me, setMe }) {
 
       {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
       {premiumOpen && <PremiumSheet plan={plan} onClose={() => setPremiumOpen(false)} toast={toast} />}
+      {me.university == null && <UniversityPrompt me={me} setMe={setMe} toast={toast} />}
       <InstallPrompt />
       <NotifyPrompt toast={toast} />
       {filterOpen && (
@@ -323,4 +333,35 @@ export function Avatar({ p, idx = 0, className = '' }) {
   return url
     ? <img className={className} src={url} alt={p.name} draggable={false} />
     : <span className={`placeholder ${className}`} aria-label={p.name}>{p.name?.[0]}</span>
+}
+
+// One-time ask for accounts created before the university field existed.
+function UniversityPrompt({ me, setMe, toast }) {
+  const key = `faisca-uni-later-${me.id}`
+  const [open, setOpen] = useState(() => { try { return !sessionStorage.getItem(key) } catch { return true } })
+  const [uni, setUni] = useState('')
+  const [busy, setBusy] = useState(false)
+  if (!open) return null
+  const later = () => { try { sessionStorage.setItem(key, '1') } catch { /* ignore */ } }
+  return (
+    <Modal className="filter-modal uni-modal" onClose={() => setOpen(false)}>
+      {(close) => (
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          setBusy(true)
+          const { data, error } = await supabase.from('profiles').update({ university: uni.trim() }).eq('id', me.id).select().single()
+          setBusy(false)
+          if (error) return toast(error.message)
+          toast('Universidade guardada'); close(); setMe(data)
+        }}>
+          <span className="kicker">NOVIDADE</span>
+          <div className="modal-title">Em que universidade andas?</div>
+          <p className="install-sub">Aparece no teu perfil em vez da profissão e ajuda-te a encontrar pessoas da tua faculdade.</p>
+          <UniversityField value={uni} onChange={setUni} required />
+          <button className="primary-button" disabled={busy || !uni.trim()}>{busy ? 'A guardar…' : 'Guardar'}</button>
+          <button type="button" className="link" onClick={() => { later(); close() }}>Agora não</button>
+        </form>
+      )}
+    </Modal>
+  )
 }

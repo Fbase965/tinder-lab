@@ -129,8 +129,8 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
                     <div className="card-location"><Icon name="location" size={14} /> {distanceText(c.distance_km)}</div>
                   )}
                   <div className="name-line"><span>{c.name}, {c.age}</span></div>
-                  {(c.job || c.height_cm) && (
-                    <div className="job">{[c.job, c.height_cm && `${c.height_cm} cm`].filter(Boolean).join(' · ')}</div>
+                  {(c.university || c.height_cm) && (
+                    <div className="job">{[c.university, c.height_cm && `${c.height_cm} cm`].filter(Boolean).join(' · ')}</div>
                   )}
                   <div className="tags">
                     {c.interests.slice(0, 5).map((t) => <span key={t} className={shared.includes(t) ? 'shared' : ''}>{t}</span>)}
@@ -230,7 +230,7 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
         </div>
         <div className="preview-content">
           <div className="name-line dark"><span>{p.name}, {p.age}</span></div>
-          <p>{[p.job, p.height_cm && `${p.height_cm} cm`, distanceText(p.distance_km)].filter(Boolean).join(' · ')}</p>
+          <p>{[p.university, p.height_cm && `${p.height_cm} cm`, distanceText(p.distance_km)].filter(Boolean).join(' · ')}</p>
           {p.score && (
             <button className="match-badge static" onClick={() => setShowParts(!showParts)} aria-expanded={showParts}>
               {matchPercent(p.score)}% match · {showParts ? 'esconder' : 'porquê?'}
