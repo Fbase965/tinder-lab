@@ -97,8 +97,8 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
                 <strong>Não há mais ninguém por perto</strong>
                 <p>Alarga a distância ou as idades nas preferências, ou volta mais tarde.</p>
                 <div className="empty-actions">
-                  <button className="filter-trigger" onClick={openFilters}>Preferências</button>
-                  <button className="filter-trigger" onClick={reload}>Atualizar</button>
+                  <button className="empty-button primary" onClick={openFilters}><Icon name="sliders" size={17} />Preferências</button>
+                  <button className="empty-button" onClick={reload}><Icon name="undo" size={17} />Atualizar</button>
                 </div>
               </div>
             )}

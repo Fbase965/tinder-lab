@@ -661,3 +661,10 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
 button.chat-person { border: 0; padding: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
 .username-form { display: grid; gap: 12px; }
 .username-form .modal-heading { margin-bottom: 8px; }
+/* empty deck: real labelled buttons (.filter-trigger turns into an icon circle on phones) */
+.empty-actions { flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.empty-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: #fff; font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: transform .18s var(--ease-out); }
+.empty-button:active { transform: scale(.96); }
+.empty-button.primary { border-color: transparent; color: #fff; background: linear-gradient(135deg, #ff6d6f, #ef474f); box-shadow: 0 10px 24px rgba(239,71,79,.28); }
+.empty-button svg { flex: none; }
+.empty-card .empty-button svg { color: inherit; }
