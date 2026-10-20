@@ -7,6 +7,7 @@ import { Explore } from './Explore'
 import { Messages } from './Messages'
 import { Profile, ProfileForm, PreferencesModal, MIN_AGE } from './Profile'
 import { LegalModal } from './Legal'
+import { InstallPrompt, NotifyPrompt, markJustSignedUp } from './Install'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -31,7 +32,7 @@ export default function App() {
       <Brand />
       <span className="kicker">BEM-VINDO</span>
       <div className="page-title">Cria o teu perfil</div>
-      <ProfileForm uid={session.user.id} onSaved={setMe} />
+      <ProfileForm uid={session.user.id} onSaved={(p) => { markJustSignedUp(); setMe(p) }} />
     </div>
   )
   return <Shell me={me} setMe={setMe} />
@@ -150,12 +151,15 @@ const NAV = [
 ]
 
 function Shell({ me, setMe }) {
-  const [page, setPage] = useState('discover')
+  // Notification taps open /?chat=<id> (public/sw.js).
+  const deepChat = new URLSearchParams(location.search).get('chat')
+  const [page, setPage] = useState(deepChat ? 'messages' : 'discover')
   const [toastText, setToastText] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
   const [sheet, setSheet] = useState(null) // profile shown in the details sheet
   const [matched, setMatched] = useState(null)
-  const [chatWith, setChatWith] = useState(null)
+  const [chatWith, setChatWith] = useState(deepChat)
+  useEffect(() => { if (deepChat) history.replaceState(null, '', '/') }, [deepChat])
   const [hasLocation, setHasLocation] = useState(false)
 
   const toast = useCallback((t) => setToastText(t), [])
@@ -241,6 +245,8 @@ function Shell({ me, setMe }) {
       </nav>
 
       {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
+      <InstallPrompt />
+      <NotifyPrompt toast={toast} />
       {filterOpen && (
         <PreferencesModal me={me} onClose={() => setFilterOpen(false)}
           onSaved={(p) => { setMe(p); toast('Preferências atualizadas') }} />

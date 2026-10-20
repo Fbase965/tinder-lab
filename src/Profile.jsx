@@ -3,6 +3,8 @@ import { supabase } from './supabase'
 import { Icon } from './icons'
 import { Avatar, Modal } from './App'
 import { LegalModal } from './Legal'
+import { NotificationsRow } from './Install'
+import { disablePush } from './pwa'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -83,8 +85,9 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <Icon name="chevron" />
             </button>
             {privacy && <PrivacyPanel uid={me.id} hasLocation={hasLocation} setHasLocation={setHasLocation} toast={toast} />}
+            <NotificationsRow toast={toast} />
           </div>
-          <button className="logout-button" onClick={() => supabase.auth.signOut()}>
+          <button className="logout-button" onClick={async () => { await disablePush().catch(() => {}); supabase.auth.signOut() }}>
             <Icon name="logout" size={19} /> Terminar sessão
           </button>
           <div className="legal-links">

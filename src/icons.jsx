@@ -1,5 +1,8 @@
 // Icons from the Figma design (Tinder-like design/src/App.tsx).
 const paths = {
+  bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>,
+  share: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" /></>,
+  addSquare: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8v8M8 12h8" /></>,
   brand: (
     <path d="M12 3c1.8 2.2 2.7 4 2.7 5.4 0 .7-.2 1.4-.5 2 1.3-.6 2.1-1.8 2.4-3.5 2.3 2.1 3.4 4.4 3.4 6.8A8 8 0 1 1 6.8 7.6c.2 2.1 1.2 3.5 2.9 4.4-.3-.8-.4-1.5-.2-2.3.2-1.9 1-4.1 2.5-6.7Z" />
   ),
