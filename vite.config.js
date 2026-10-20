@@ -5,5 +5,5 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   // /api/* are Vercel functions; in dev, use the deployed ones
-  server: { proxy: { '/api': { target: 'https://tinder-lab.vercel.app', changeOrigin: true } } },
+  server: { proxy: { '/api': { target: 'https://faiscauni.vercel.app', changeOrigin: true } } },
 })

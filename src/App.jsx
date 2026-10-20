@@ -44,7 +44,6 @@ const usernameEmail = (u) => `${u}@users.tinder-lab.vercel.app`
 const ERRORS = {
   'Invalid login credentials': 'Username ou password errados.',
   'User already registered': 'Esse username já existe.',
-  'captcha verification process failed': 'Confirma que não és um robô.',
 }
 
 // Cloudflare Turnstile captcha. Off until VITE_TURNSTILE_SITE_KEY is set and captcha is enabled in
@@ -92,7 +91,8 @@ function Auth() {
     const { error } = signUp ? await supabase.auth.signUp(creds) : await supabase.auth.signInWithPassword(creds)
     setBusy(false)
     captcha.reset()
-    setMsg(error ? (ERRORS[error.message] ?? error.message) : '')
+    const captchaFail = error?.message.startsWith('captcha') && 'A verificação anti-robô falhou. Tenta outra vez.'
+    setMsg(error ? (captchaFail || ERRORS[error.message] || error.message) : '')
   }
 
   return (

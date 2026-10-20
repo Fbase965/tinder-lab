@@ -3,7 +3,7 @@ import { Icon } from './icons'
 
 // Draft texts in the name of the website. Before a public launch, add a real contact (GDPR art. 13)
 // and have them reviewed: this is not legal advice.
-const SITE = 'faísca (tinder-lab.vercel.app)'
+const SITE = 'faísca (faiscauni.vercel.app)'
 const CONTACT = 'a equipa da faísca, através da própria aplicação'
 const UPDATED = '20 de outubro de 2026'
 
