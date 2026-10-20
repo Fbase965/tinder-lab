@@ -543,3 +543,20 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
   .toast { animation: none; }
   .skeleton { animation: none; }
 }
+
+/* consent, legal, account */
+.consent { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.consent input { flex: none; width: 18px; height: 18px; margin-top: 1px; accent-color: var(--coral); }
+.consent .link { font-size: inherit; }
+.captcha:empty { display: none; }
+.legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; padding: 6px 0 10px; }
+.legal-links .link { color: var(--muted); font-size: 12px; font-weight: 600; }
+.legal-links .link.danger { color: var(--coral-dark); }
+.legal-modal { max-height: 86vh; overflow-y: auto; }
+.legal-modal section { margin-bottom: 16px; }
+.legal-modal h3 { margin-bottom: 4px; font-size: 14px; font-weight: 800; }
+.legal-modal p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.filter-modal .distance-row { grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.distance-row button { padding: 0; }
+.field input:disabled { color: var(--muted); }
+@media (max-width: 700px) { .consent { font-size: 13px; } .consent input { width: 22px; height: 22px; } .legal-modal { max-height: 92dvh; } }

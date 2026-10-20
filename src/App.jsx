@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { Icon, Brand } from './icons'
 import { useDeck, useMatches, needsReply, completeness } from './data'
 import { Discover, ProfileSheet } from './Discover'
 import { Explore } from './Explore'
 import { Messages } from './Messages'
-import { Profile, ProfileForm, PreferencesModal } from './Profile'
+import { Profile, ProfileForm, PreferencesModal, MIN_AGE } from './Profile'
+import { LegalModal } from './Legal'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -42,6 +43,29 @@ const usernameEmail = (u) => `${u}@users.tinderlab.app`
 const ERRORS = {
   'Invalid login credentials': 'Username ou password errados.',
   'User already registered': 'Esse username já existe.',
+  'captcha verification process failed': 'Confirma que não és um robô.',
+}
+
+// Cloudflare Turnstile captcha. Off until VITE_TURNSTILE_SITE_KEY is set and captcha is enabled in
+// Supabase (Authentication → Attack Protection) with the matching secret key.
+const TURNSTILE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+function useCaptcha(box) {
+  const [token, setToken] = useState('')
+  const widget = useRef(null)
+  useEffect(() => {
+    if (!TURNSTILE_KEY) return
+    const render = () => {
+      if (box.current && widget.current == null)
+        widget.current = window.turnstile.render(box.current, { sitekey: TURNSTILE_KEY, callback: setToken, 'expired-callback': () => setToken('') })
+    }
+    if (window.turnstile) return render()
+    const s = Object.assign(document.createElement('script'), { src: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', async: true })
+    s.onload = render
+    document.head.appendChild(s)
+  }, [box])
+  // Tokens are single-use: get a fresh one after every attempt.
+  const reset = () => { if (widget.current != null) { window.turnstile.reset(widget.current); setToken('') } }
+  return { enabled: !!TURNSTILE_KEY, token, reset }
 }
 
 function Auth() {
@@ -51,16 +75,21 @@ function Auth() {
   const [confirm, setConfirm] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [legal, setLegal] = useState(null)
+  const box = useRef(null)
+  const captcha = useCaptcha(box)
 
   const switchMode = () => { setSignUp(!signUp); setMsg(''); setConfirm('') }
   const submit = async (e) => {
     e.preventDefault()
     const u = username.trim().toLowerCase()
     if (signUp && password !== confirm) return setMsg('As passwords não coincidem.')
+    if (captcha.enabled && !captcha.token) return setMsg('Confirma que não és um robô.')
     setBusy(true)
-    const creds = { email: usernameEmail(u), password }
+    const creds = { email: usernameEmail(u), password, options: captcha.enabled ? { captchaToken: captcha.token } : undefined }
     const { error } = signUp ? await supabase.auth.signUp(creds) : await supabase.auth.signInWithPassword(creds)
     setBusy(false)
+    captcha.reset()
     setMsg(error ? (ERRORS[error.message] ?? error.message) : '')
   }
 
@@ -88,6 +117,17 @@ function Auth() {
             <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} autoComplete="new-password" />
           </label>
         )}
+        {signUp && (
+          <label className="consent">
+            <input type="checkbox" required />
+            <span>
+              Tenho pelo menos {MIN_AGE} anos e aceito os <button type="button" className="link" onClick={() => setLegal('terms')}>Termos</button> e
+              a <button type="button" className="link" onClick={() => setLegal('privacy')}>Política de Privacidade</button>, incluindo
+              o tratamento de quem procuro (orientação) e da minha localização, se a partilhar.
+            </span>
+          </label>
+        )}
+        <div ref={box} className="captcha" />
         <button className="primary-button" disabled={busy}>{busy ? '…' : signUp ? 'Criar conta' : 'Entrar'}</button>
         {msg && <p className="form-error">{msg}</p>}
         <p className="switch">
@@ -95,6 +135,7 @@ function Auth() {
           <button type="button" className="link" onClick={switchMode}>{signUp ? 'Entrar' : 'Criar conta'}</button>
         </p>
       </form>
+      {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
     </div>
   )
 }
@@ -123,7 +164,7 @@ function Shell({ me, setMe }) {
   }, [toastText])
 
   useEffect(() => {
-    supabase.from('locations').select('id').eq('id', me.id).maybeSingle().then(({ data }) => setHasLocation(!!data))
+    supabase.from('locations').select('lat').eq('id', me.id).maybeSingle().then(({ data }) => setHasLocation(data?.lat != null))
   }, [me.id])
 
   const deckApi = useDeck(me, toast)

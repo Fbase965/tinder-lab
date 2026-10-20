@@ -2,14 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { Icon } from './icons'
 import { Avatar, Modal } from './App'
+import { LegalModal } from './Legal'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
+const DISTANCES = [5, 10, 25, 50, 100, 200, 500] // must match profiles_max_distance_km_check
+export const MIN_AGE = 17
+// Database errors (supabase/launch.sql) in words people understand.
+const DB_ERRORS = {
+  too_young: `Tens de ter pelo menos ${MIN_AGE} anos.`,
+  birth_date_locked: 'A data de nascimento não pode ser alterada.',
+  invalid_photo_url: 'Uma das fotos não é válida. Volta a carregá-la.',
+  location_rate_limit: 'Só podes mudar a localização de 6 em 6 horas.',
+}
+const dbError = (e) => Object.entries(DB_ERRORS).find(([k]) => e.message.includes(k))?.[1] ?? e.message
+// Latest birth date allowed today, as yyyy-mm-dd for <input type="date" max>.
+const maxBirthDate = () => { const d = new Date(); d.setFullYear(d.getFullYear() - MIN_AGE); return d.toISOString().slice(0, 10) }
 
 export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast }) {
   const [editing, setEditing] = useState(false)
   const [privacy, setPrivacy] = useState(false)
   const [likes, setLikes] = useState(null)
+  const [legal, setLegal] = useState(null)
 
   useEffect(() => {
     supabase.rpc('my_stats').then(({ data }) => setLikes(data?.[0]?.likes_received ?? null))
@@ -73,7 +87,13 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
           <button className="logout-button" onClick={() => supabase.auth.signOut()}>
             <Icon name="logout" size={19} /> Terminar sessão
           </button>
+          <div className="legal-links">
+            <button className="link" onClick={() => setLegal('privacy')}>Política de Privacidade</button>
+            <button className="link" onClick={() => setLegal('terms')}>Termos</button>
+            <DeleteAccount me={me} toast={toast} />
+          </div>
         </section>
+        {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
       </div>
     </div>
   )
@@ -85,24 +105,22 @@ function PrivacyPanel({ uid, hasLocation, setHasLocation, toast }) {
     if (!navigator.geolocation) return toast('Este browser não dá acesso à localização.')
     setBusy(true)
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-      // ~1 km precision is plenty for "a X km" and keeps exact homes private.
-      const round = (n) => Math.round(n * 100) / 100
-      const { error } = await supabase.from('locations')
-        .upsert({ id: uid, lat: round(coords.latitude), lng: round(coords.longitude), updated_at: new Date().toISOString() })
+      // The database rounds to ~1 km and allows a change every 6 hours (supabase/launch.sql).
+      const { error } = await supabase.from('locations').upsert({ id: uid, lat: coords.latitude, lng: coords.longitude })
       setBusy(false)
-      if (error) return toast(error.message)
+      if (error) return toast(dbError(error))
       setHasLocation(true); toast('Localização atualizada')
     }, (e) => { setBusy(false); toast(`Localização bloqueada: ${e.message}`) })
   }
   const remove = async () => {
-    const { error } = await supabase.from('locations').delete().eq('id', uid)
-    if (error) return toast(error.message)
+    const { error } = await supabase.from('locations').update({ lat: null, lng: null }).eq('id', uid)
+    if (error) return toast(dbError(error))
     setHasLocation(false); toast('Localização removida')
   }
   return (
     <div className="privacy-panel">
       <p>{hasLocation
-        ? 'A tua localização está guardada com cerca de 1 km de precisão. Os outros só veem a distância, nunca a tua posição.'
+        ? 'A tua localização é guardada arredondada (~1 km). Os outros só veem uma distância aproximada, como “a menos de 10 km”, nunca a tua posição. Podes mudá-la de 6 em 6 horas.'
         : 'Sem localização, não aparece a distância e o filtro de distância não se aplica a ti.'}</p>
       <div className="choice-row">
         <button className="selected" onClick={share} disabled={busy}>{busy ? 'A obter…' : hasLocation ? 'Atualizar localização' : 'Partilhar localização'}</button>
@@ -115,7 +133,7 @@ function PrivacyPanel({ uid, hasLocation, setHasLocation, toast }) {
 export function PreferencesModal({ me, onClose, onSaved }) {
   const [p, setP] = useState({
     looking_for: me.looking_for, max_distance_km: me.max_distance_km ?? 50,
-    pref_age_min: me.pref_age_min ?? 18, pref_age_max: me.pref_age_max ?? 99,
+    pref_age_min: me.pref_age_min ?? MIN_AGE, pref_age_max: me.pref_age_max ?? 99,
     pref_height_min: me.pref_height_min ?? '', pref_height_max: me.pref_height_max ?? '',
   })
   const [err, setErr] = useState('')
@@ -127,7 +145,7 @@ export function PreferencesModal({ me, onClose, onSaved }) {
     const row = { ...p, pref_height_min: p.pref_height_min === '' ? null : p.pref_height_min,
       pref_height_max: p.pref_height_max === '' ? null : p.pref_height_max }
     const { data, error } = await supabase.from('profiles').update(row).eq('id', me.id).select().single()
-    if (error) return setErr(error.message)
+    if (error) return setErr(dbError(error))
     onSaved(data); close()
   }
 
@@ -145,12 +163,16 @@ export function PreferencesModal({ me, onClose, onSaved }) {
           ))}
         </div>
         <label>Distância máxima <strong>{p.max_distance_km} km</strong></label>
-        <input type="range" min="1" max="200" value={p.max_distance_km} onChange={num('max_distance_km')} />
+        <div className="choice-row distance-row">
+          {DISTANCES.map((d) => (
+            <button key={d} className={p.max_distance_km === d ? 'selected' : ''} onClick={() => setP({ ...p, max_distance_km: d })}>{d}</button>
+          ))}
+        </div>
         <label>Intervalo de idades <strong>{p.pref_age_min} – {p.pref_age_max}</strong></label>
         <div className="dual-range">
-          <input type="range" min="18" max="99" value={p.pref_age_min} aria-label="Idade mínima"
+          <input type="range" min={MIN_AGE} max="99" value={p.pref_age_min} aria-label="Idade mínima"
             onChange={(e) => setP({ ...p, pref_age_min: Math.min(Number(e.target.value), p.pref_age_max) })} />
-          <input type="range" min="18" max="99" value={p.pref_age_max} aria-label="Idade máxima"
+          <input type="range" min={MIN_AGE} max="99" value={p.pref_age_max} aria-label="Idade máxima"
             onChange={(e) => setP({ ...p, pref_age_max: Math.max(Number(e.target.value), p.pref_age_min) })} />
         </div>
         <label>Altura preferida <strong>opcional</strong></label>
@@ -171,15 +193,17 @@ const HEIGHT_FIELDS = ['height_cm']
 const blankNulls = (row, keys) => Object.fromEntries(keys.map((k) => [k, row[k] ?? '']))
 
 export function ProfileForm({ uid, onSaved }) {
-  const [f, setF] = useState({ name: '', age: 25, gender: 'man', looking_for: 'women', bio: '', job: '', photos: [], interests: '', height_cm: '' })
+  const [f, setF] = useState({ name: '', birth_date: '', gender: 'man', looking_for: 'women', bio: '', job: '', photos: [], interests: '', height_cm: '' })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const saved = useRef([])
+  const [locked, setLocked] = useState(false) // birth date can be set once (profile_guard)
   useEffect(() => {
     supabase.from('profiles').select('*').eq('id', uid).maybeSingle().then(({ data }) => {
       if (!data) return
       saved.current = data.photos
-      setF({ ...data, job: data.job ?? '', interests: data.interests.join(', '), ...blankNulls(data, HEIGHT_FIELDS) })
+      setF({ ...data, job: data.job ?? '', interests: data.interests.join(', '), ...blankNulls(data, [...HEIGHT_FIELDS, 'birth_date']) })
+      setLocked(!!data.birth_date)
     })
   }, [uid])
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -189,14 +213,14 @@ export function ProfileForm({ uid, onSaved }) {
     if (!f.photos.length) return setErr('Adiciona pelo menos uma foto.')
     setBusy(true)
     const row = {
-      id: uid, name: f.name.trim(), age: Number(f.age), gender: f.gender, looking_for: f.looking_for,
+      id: uid, name: f.name.trim(), birth_date: f.birth_date, gender: f.gender, looking_for: f.looking_for,
       bio: f.bio, job: f.job.trim(), photos: f.photos,
       height_cm: f.height_cm === '' ? null : Number(f.height_cm),
       interests: [...new Set(f.interests.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))],
     }
     const { data, error } = await supabase.from('profiles').upsert(row).select().single()
     setBusy(false)
-    if (error) return setErr(error.message)
+    if (error) return setErr(dbError(error))
     // Delete removed photos only after the profile stops pointing at them.
     const removed = saved.current.filter((u) => !data.photos.includes(u))
     const old = removed.map(storagePath).filter(Boolean) // photos from before the move to Azure
@@ -208,10 +232,12 @@ export function ProfileForm({ uid, onSaved }) {
 
   return (
     <form className="profile-form" onSubmit={save}>
-      <PhotoGrid photos={f.photos} onChange={(photos) => setF((x) => ({ ...x, photos }))} onError={setErr} />
+      <PhotoGrid photos={f.photos} onChange={(next) => setF((x) => ({ ...x, photos: next(x.photos) }))} onError={setErr} />
       <div className="form-grid">
         <label className="field"><span>Nome</span><input value={f.name} onChange={set('name')} required maxLength={40} /></label>
-        <label className="field"><span>Idade</span><input type="number" min="18" max="99" value={f.age} onChange={set('age')} required /></label>
+        <label className="field"><span>Data de nascimento</span>
+          <input type="date" value={f.birth_date} onChange={set('birth_date')} required disabled={locked} max={maxBirthDate()} min="1920-01-01" />
+        </label>
         <label className="field"><span>Profissão</span><input value={f.job} onChange={set('job')} maxLength={60} placeholder="ex: Designer" /></label>
         <label className="field"><span>Altura (cm)</span><input type="number" min="120" max="230" value={f.height_cm} onChange={set('height_cm')} placeholder="opcional" /></label>
       </div>
@@ -283,11 +309,11 @@ function PhotoGrid({ photos, onChange, onError }) {
       }
       setBusy((n) => n - 1)
     }
-    onChange([...photos, ...urls])
+    onChange((cur) => [...cur, ...urls].slice(0, MAX_PHOTOS))
   }
 
-  const remove = (url) => onChange(photos.filter((p) => p !== url))
-  const makeMain = (url) => onChange([url, ...photos.filter((p) => p !== url)])
+  const remove = (url) => onChange((cur) => cur.filter((p) => p !== url))
+  const makeMain = (url) => onChange((cur) => [url, ...cur.filter((p) => p !== url)])
 
   return (
     <div>
@@ -314,4 +340,26 @@ function PhotoGrid({ photos, onChange, onError }) {
         onChange={(e) => { add(e.target.files); e.target.value = '' }} />
     </div>
   )
+}
+
+// GDPR art. 17: photos first (they live outside the database), then the account; everything else cascades.
+function DeleteAccount({ me, toast }) {
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    if (!confirm('Apagar a tua conta? Perfil, fotos, matches e mensagens são apagados para sempre.')) return
+    if (prompt('Para confirmar, escreve APAGAR') !== 'APAGAR') return
+    setBusy(true)
+    try {
+      await photosApi({ removeAll: true })
+      const { data: old } = await supabase.storage.from('photos').list(me.id)
+      if (old?.length) await supabase.storage.from('photos').remove(old.map((o) => `${me.id}/${o.name}`))
+      const { error } = await supabase.rpc('delete_me')
+      if (error) throw error
+      await supabase.auth.signOut()
+    } catch (e) {
+      setBusy(false)
+      toast(`Não foi possível apagar a conta: ${e.message}`)
+    }
+  }
+  return <button className="link danger" onClick={run} disabled={busy}>{busy ? 'A apagar…' : 'Apagar conta'}</button>
 }

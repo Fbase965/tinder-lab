@@ -9,7 +9,8 @@ const PART_LABELS = {
   superLikesMe: 'Super Like', fresh: 'Perfil novo', height: 'Altura', distance: 'Distância',
 }
 
-export const distanceText = (km) => (km == null ? null : km < 1 ? 'a menos de 1 km' : `a ${km} km`)
+// deck() only returns steps (5, 10, 25 … km) so nobody can work out where someone lives.
+export const distanceText = (km) => (km == null ? null : `a menos de ${km} km`)
 
 export function Discover({ me, deckApi, swipe, complete, paused, openFilters, openSheet, goProfile }) {
   const { deck, rewind, canRewind, superLeft, reload } = deckApi

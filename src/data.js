@@ -39,13 +39,16 @@ export function useDeck(me, toast) {
     if (!liked) return 'ok'
     const [a, b] = [me.id, card.id].sort()
     const { data } = await supabase.from('matches').select('a').eq('a', a).eq('b', b).maybeSingle()
+    if (data) setLast(null) // a match can't be rewound: it would delete the other person's chat
     return data ? 'match' : 'ok'
   }
 
   const rewind = async () => {
     if (!last) return
-    const { error } = await supabase.from('swipes').delete().eq('swiper', me.id).eq('target', last.card.id)
+    // RLS only allows rewinding the last 10 minutes and never a match: 0 rows deleted means too late.
+    const { data, error } = await supabase.from('swipes').delete().eq('swiper', me.id).eq('target', last.card.id).select()
     if (error) return toast(error.message)
+    if (!data.length) { setLast(null); return toast('Já não dá para desfazer este perfil') }
     setDeck((d) => [last.card, ...d])
     if (last.kind === 'super') setSuperLeft((n) => n + 1)
     setLast(null)

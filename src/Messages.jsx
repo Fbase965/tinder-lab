@@ -99,7 +99,7 @@ function Chat({ me, other, onBack, onGone, toast }) {
     setText('')
     const { data, error } = await supabase.from('messages').insert({ a, b, body: t }).select().single()
     if (error) { setText(t); return toast(error.code === '23503' ? `${other.name} já não é um match.` : error.message) }
-    setMsgs((xs) => xs.some((x) => x.id === data.id) ? xs : [...xs, data])
+    setMsgs((xs) => (xs ?? []).some((x) => x.id === data.id) ? xs : [...(xs ?? []), data])
   }
 
   const unmatch = async () => {

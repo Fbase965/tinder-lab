@@ -61,7 +61,7 @@ export function Explore({ me, deck, swipe, openSheet }) {
             <div>
               <strong>{c.name}, {c.age}</strong>
               <span>
-                {c.distance_km != null && <><Icon name="location" size={12} /> {distanceText(c.distance_km).replace('a ', '')}</>}
+                {c.distance_km != null && <><Icon name="location" size={12} /> {`< ${c.distance_km} km`}</>}
                 {c.distance_km != null && c.job && ' · '}
                 {c.job}
               </span>
