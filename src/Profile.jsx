@@ -252,12 +252,13 @@ async function compress(file, max = 960) {
 const storagePath = (url) => url.split('/object/public/photos/')[1]
 const azurePath = (url) => url.split('.blob.core.windows.net/photos/')[1]
 
-// Photos live in Azure Blob Storage; /api/photos (Vercel function) checks the Supabase session.
+// Photos live in Azure Blob Storage; /api/photos (Vercel function) checks the Supabase session, size and type.
 async function photosApi(body) {
   const { data } = await supabase.auth.getSession()
+  const raw = body instanceof Blob
   const r = await fetch('/api/photos', {
-    method: 'POST', body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
+    method: 'POST', body: raw ? body : JSON.stringify(body),
+    headers: { 'Content-Type': raw ? 'application/octet-stream' : 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
   })
   const json = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(json.error ?? `erro ${r.status}`)
@@ -275,15 +276,7 @@ function PhotoGrid({ photos, onChange, onError }) {
     for (const file of picked) {
       try {
         // shortcut: photos uploaded but never saved stay in storage, add a cleanup job if it matters
-        const blob = await compress(file)
-        const { uploadUrl, publicUrl } = await photosApi({ ext: blob.type === 'image/webp' ? 'webp' : 'jpg' })
-        // file names are unique, so browsers can cache them for a year instead of re-downloading
-        const put = await fetch(uploadUrl, {
-          method: 'PUT', body: blob,
-          headers: { 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': blob.type, 'x-ms-blob-cache-control': 'public, max-age=31536000, immutable' },
-        })
-        if (!put.ok) throw new Error(`upload ${put.status}`)
-        urls.push(publicUrl)
+        urls.push((await photosApi(await compress(file))).url)
       } catch (e) {
         onError(`Não foi possível carregar ${file.name}: ${e.message}`)
       }
