@@ -14,7 +14,11 @@ const INSTALL = 'faisca-install' // 'pending' right after sign-up on a phone
 const PUSH_ASKED = 'faisca-push-asked'
 const OPEN_EVENT = 'faisca-open-install'
 
-export const markJustSignedUp = () => { if (isPhone() && !isStandalone()) flag.set(INSTALL, 'pending') }
+const NEW_ACCOUNT = 'faisca-new-account'
+export const markJustSignedUp = () => {
+  flag.set(NEW_ACCOUNT, '1')
+  if (isPhone() && !isStandalone()) flag.set(INSTALL, 'pending')
+}
 export const openInstall = () => window.dispatchEvent(new Event(OPEN_EVENT))
 
 // Bottom sheet that turns the site into a home-screen app: native dialog on Android/Chrome, steps on iOS.
@@ -58,10 +62,11 @@ export function InstallPrompt() {
 export function NotifyPrompt({ toast }) {
   const [show, setShow] = useState(false)
   useEffect(() => {
-    const eligible = pushSupported() && Notification.permission === 'default' && !flag.get(PUSH_ASKED)
-      && flag.get(INSTALL) !== 'pending' && (isStandalone() || !isPhone())
-    if (!eligible) return
-    const t = setTimeout(() => setShow(true), 4000) // let the first screen settle
+    // iPhone only allows push inside the installed app; there the install sheet comes first.
+    const canPushHere = pushSupported() && !(isIOS() && !isStandalone())
+    const fresh = !!flag.get(NEW_ACCOUNT) // right after creating the account: ask even if asked before
+    if (!canPushHere || Notification.permission !== 'default' || (!fresh && flag.get(PUSH_ASKED))) return
+    const t = setTimeout(() => { flag.set(NEW_ACCOUNT, null); setShow(true) }, fresh ? 1200 : 4000) // let the first screen settle
     return () => clearTimeout(t)
   }, [])
   if (!show) return null
