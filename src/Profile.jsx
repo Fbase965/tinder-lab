@@ -197,14 +197,17 @@ export function ProfileForm({ uid, onSaved }) {
     setBusy(false)
     if (error) return setErr(error.message)
     // Delete removed photos only after the profile stops pointing at them.
-    const removed = saved.current.filter((u) => !data.photos.includes(u)).map(storagePath)
-    if (removed.length) supabase.storage.from('photos').remove(removed)
+    const removed = saved.current.filter((u) => !data.photos.includes(u))
+    const old = removed.map(storagePath).filter(Boolean) // photos from before the move to Azure
+    if (old.length) supabase.storage.from('photos').remove(old)
+    const azure = removed.map(azurePath).filter(Boolean)
+    if (azure.length) photosApi({ remove: azure }).catch(() => {})
     onSaved(data)
   }
 
   return (
     <form className="profile-form" onSubmit={save}>
-      <PhotoGrid uid={uid} photos={f.photos} onChange={(photos) => setF((x) => ({ ...x, photos }))} onError={setErr} />
+      <PhotoGrid photos={f.photos} onChange={(photos) => setF((x) => ({ ...x, photos }))} onError={setErr} />
       <div className="form-grid">
         <label className="field"><span>Nome</span><input value={f.name} onChange={set('name')} required maxLength={40} /></label>
         <label className="field"><span>Idade</span><input type="number" min="18" max="99" value={f.age} onChange={set('age')} required /></label>
@@ -247,8 +250,21 @@ async function compress(file, max = 960) {
 }
 
 const storagePath = (url) => url.split('/object/public/photos/')[1]
+const azurePath = (url) => url.split('.blob.core.windows.net/photos/')[1]
 
-function PhotoGrid({ uid, photos, onChange, onError }) {
+// Photos live in Azure Blob Storage; /api/photos (Vercel function) checks the Supabase session.
+async function photosApi(body) {
+  const { data } = await supabase.auth.getSession()
+  const r = await fetch('/api/photos', {
+    method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
+  })
+  const json = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(json.error ?? `erro ${r.status}`)
+  return json
+}
+
+function PhotoGrid({ photos, onChange, onError }) {
   const [busy, setBusy] = useState(0)
   const input = useRef(null)
 
@@ -260,11 +276,14 @@ function PhotoGrid({ uid, photos, onChange, onError }) {
       try {
         // shortcut: photos uploaded but never saved stay in storage, add a cleanup job if it matters
         const blob = await compress(file)
-        const path = `${uid}/${crypto.randomUUID()}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`
+        const { uploadUrl, publicUrl } = await photosApi({ ext: blob.type === 'image/webp' ? 'webp' : 'jpg' })
         // file names are unique, so browsers can cache them for a year instead of re-downloading
-        const { error } = await supabase.storage.from('photos').upload(path, blob, { contentType: blob.type, cacheControl: '31536000' })
-        if (error) throw error
-        urls.push(supabase.storage.from('photos').getPublicUrl(path).data.publicUrl)
+        const put = await fetch(uploadUrl, {
+          method: 'PUT', body: blob,
+          headers: { 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': blob.type, 'x-ms-blob-cache-control': 'public, max-age=31536000, immutable' },
+        })
+        if (!put.ok) throw new Error(`upload ${put.status}`)
+        urls.push(publicUrl)
       } catch (e) {
         onError(`Não foi possível carregar ${file.name}: ${e.message}`)
       }
