@@ -235,13 +235,15 @@ export function ProfileForm({ uid, onSaved }) {
 
 const MAX_PHOTOS = 6
 
-// Downscale in the browser so uploads stay well under the bucket's 5 MB limit.
-async function toJpeg(file, max = 1280) {
+// Downscale + WebP in the browser: keeps storage and egress (Supabase free tier) small.
+async function compress(file, max = 960) {
   const img = await createImageBitmap(file)
   const k = Math.min(1, max / Math.max(img.width, img.height))
   const canvas = Object.assign(document.createElement('canvas'), { width: img.width * k, height: img.height * k })
   canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-  return new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.85))
+  const encode = (type) => new Promise((ok) => canvas.toBlob(ok, type, 0.75))
+  const webp = await encode('image/webp')
+  return webp?.type === 'image/webp' ? webp : encode('image/jpeg') // browsers without WebP encoding return PNG
 }
 
 const storagePath = (url) => url.split('/object/public/photos/')[1]
@@ -257,8 +259,10 @@ function PhotoGrid({ uid, photos, onChange, onError }) {
     for (const file of picked) {
       try {
         // shortcut: photos uploaded but never saved stay in storage, add a cleanup job if it matters
-        const path = `${uid}/${crypto.randomUUID()}.jpg`
-        const { error } = await supabase.storage.from('photos').upload(path, await toJpeg(file), { contentType: 'image/jpeg' })
+        const blob = await compress(file)
+        const path = `${uid}/${crypto.randomUUID()}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`
+        // file names are unique, so browsers can cache them for a year instead of re-downloading
+        const { error } = await supabase.storage.from('photos').upload(path, blob, { contentType: blob.type, cacheControl: '31536000' })
         if (error) throw error
         urls.push(supabase.storage.from('photos').getPublicUrl(path).data.publicUrl)
       } catch (e) {
