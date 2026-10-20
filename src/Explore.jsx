@@ -8,6 +8,7 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   if (!deck) return <p className="loading">A carregar…</p>
+  if (!plan.premium) return <ExploreLocked deck={deck} openPremium={openPremium} />
 
   const q = query.trim().toLowerCase()
   const list = deck
@@ -54,6 +55,37 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
             </div>
           </article>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// Explore is faísca+. Free users see a blurred preview of profiles they already get in Discover.
+function ExploreLocked({ deck, openPremium }) {
+  const preview = deck.slice(0, 6)
+  return (
+    <div className="standard-page">
+      <div className="page-heading">
+        <div>
+          <span className="kicker">EXPLORAR</span>
+          <div className="page-title">Descobre à tua maneira</div>
+        </div>
+      </div>
+      <div className="explore-locked">
+        <div className="locked-grid" aria-hidden="true">
+          {preview.map((c, i) => <div key={c.id} style={{ '--i': i }}><Avatar p={c} /></div>)}
+          {Array.from({ length: Math.max(0, 6 - preview.length) }, (_, i) => <div key={i} className="blank" style={{ '--i': preview.length + i }} />)}
+        </div>
+        <div className="locked-card">
+          <div className="premium-badge"><Icon name="brand" size={22} filled /><span>faísca<b>+</b></span></div>
+          <strong>Explorar é exclusivo faísca+</strong>
+          <ul>
+            <li><Icon name="search" size={17} /> Pesquisa por universidade e interesses</li>
+            <li><Icon name="sparkles" size={17} /> Vê todos os perfis numa grelha, com % de match</li>
+            <li><Icon name="heart" size={17} filled /> Quem gostou de ti e quem viu o teu perfil</li>
+          </ul>
+          <button className="primary-button" onClick={openPremium}>Desbloquear Explorar</button>
+        </div>
       </div>
     </div>
   )

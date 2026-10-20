@@ -223,6 +223,7 @@ function Shell({ me, setMe }) {
               <Icon name={item.icon} filled={page === item.id} />
               <span>{item.label}</span>
               {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
+              {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
             </button>
           ))}
         </nav>
@@ -268,6 +269,7 @@ function Shell({ me, setMe }) {
             <Icon name={item.icon} filled={page === item.id} />
             <span>{item.short ?? item.label}</span>
             {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
+            {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
           </button>
         ))}
       </nav>
