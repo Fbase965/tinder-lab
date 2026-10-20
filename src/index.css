@@ -630,3 +630,11 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
 .ios-tip { display: flex; gap: 10px; align-items: flex-start; width: 100%; margin-bottom: 16px; padding: 12px 14px; border: 1px solid #ffd2d3; border-radius: 14px; color: var(--ink); background: #fff6f5; font-size: 12px; line-height: 1.45; text-align: left; cursor: pointer; }
 .ios-tip svg { flex: none; color: var(--coral); }
 .install-note { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.push-tester { display: grid; gap: 8px; margin-bottom: 22px; }
+.push-row { display: flex; gap: 8px; }
+.push-row input { flex: 1; min-width: 0; height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 14px; font: inherit; font-size: 16px; }
+.push-row .primary-button { width: auto; height: 46px; padding: 0 18px; }
+.push-tester .link { justify-self: start; font-size: 12px; }
+.push-status { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: 12px; }
+.push-status .ok { color: #157a55; } .push-status .bad { color: var(--coral-dark); }
+.push-status code { display: block; overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }

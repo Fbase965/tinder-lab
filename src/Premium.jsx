@@ -177,6 +177,7 @@ export function AdminPanel({ onClose, toast }) {
           </div>
           <button className="primary-button" disabled={busy}>Dar faísca+</button>
         </form>
+        <PushTester toast={toast} />
         <span className="settings-label">COM FAÍSCA+ ({list?.length ?? '…'})</span>
         <div className="admin-list">
           {list?.map((u) => (
@@ -189,5 +190,44 @@ export function AdminPanel({ onClose, toast }) {
         </div>
       </>}
     </Modal>
+  )
+}
+
+// Sends a test push (supabase/push-test.sql) and shows what the last deliveries returned.
+function PushTester({ toast }) {
+  const [username, setUsername] = useState('')
+  const [status, setStatus] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const refresh = () => supabase.rpc('admin_push_status').then(({ data, error }) => setStatus(error ? { error: error.message } : data?.[0]))
+  const send = async () => {
+    setBusy(true)
+    const { data, error } = await supabase.rpc('admin_test_push', { p_username: username.trim() || null })
+    setBusy(false)
+    if (error) return toast(error.message.includes('user_not_found') ? `Não existe o username “${username}”` : error.message)
+    const n = data?.[0]?.dispositivos ?? 0
+    toast(n ? `Enviada para ${n} ${n === 1 ? 'dispositivo' : 'dispositivos'}` : 'Esta conta não tem notificações ativas em nenhum dispositivo')
+    setTimeout(refresh, 3000) // pg_net delivers asynchronously
+  }
+  return (
+    <div className="push-tester">
+      <span className="settings-label">TESTAR NOTIFICAÇÕES</span>
+      <div className="push-row">
+        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username (vazio = tu)" autoCapitalize="none" />
+        <button type="button" className="primary-button" onClick={send} disabled={busy}>{busy ? '…' : 'Enviar'}</button>
+      </div>
+      <button type="button" className="link" onClick={refresh}>Ver estado</button>
+      {status?.error && <p className="form-error">{status.error}</p>}
+      {status && !status.error && (
+        <div className="push-status">
+          <p>{status.dispositivos_total} {status.dispositivos_total === 1 ? 'dispositivo' : 'dispositivos'} com notificações</p>
+          {status.ultimas.length === 0 && <p>Ainda nenhuma notificação enviada.</p>}
+          {status.ultimas.map((r) => (
+            <p key={r.id} className={r.status_code === 200 ? 'ok' : 'bad'}>
+              {new Date(r.created).toLocaleTimeString('pt-PT')} · {r.status_code ?? 'sem resposta'} {r.error_msg ?? ''} {r.timed_out ? 'timeout' : ''} <code>{r.resposta}</code>
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
