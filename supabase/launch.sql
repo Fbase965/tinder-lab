@@ -1,5 +1,5 @@
 -- Run once in Supabase Dashboard > SQL Editor, AFTER design.sql.
--- Launch hardening: server-side matching filters, coarse distances, birth dates (17+),
+-- Launch hardening: server-side matching filters, coarse distances, birth dates (18+),
 -- photo URL checks, safer rewind, account deletion, indexes.
 
 -- ---------- Profiles: who can read them ----------
@@ -11,14 +11,14 @@ create policy "profiles read own or matched" on profiles for select to authentic
   id = auth.uid() or exists (
     select 1 from matches m where (m.a = auth.uid() and m.b = profiles.id) or (m.b = auth.uid() and m.a = profiles.id)));
 
--- ---------- Age: birth date, minimum 17 ----------
+-- ---------- Age: birth date, minimum 18 ----------
 alter table profiles add column if not exists birth_date date;
 alter table profiles add column if not exists accepted_terms_at timestamptz;
 alter table profiles drop constraint if exists profiles_age_check;
-alter table profiles add constraint profiles_age_check check (age >= 17);
+alter table profiles add constraint profiles_age_check check (age >= 18);
 alter table profiles drop constraint if exists profiles_pref_age_min_check;
-alter table profiles add constraint profiles_pref_age_min_check check (pref_age_min >= 17);
-alter table profiles alter column pref_age_min set default 17;
+alter table profiles add constraint profiles_pref_age_min_check check (pref_age_min >= 18);
+alter table profiles alter column pref_age_min set default 18;
 
 -- Text limits the form already has, now enforced (not valid = existing rows are not rechecked).
 alter table profiles drop constraint if exists profiles_limits;
@@ -49,7 +49,7 @@ begin
     raise exception 'birth_date_locked';
   end if;
   if new.birth_date is not null then
-    if new.birth_date > current_date - interval '17 years' then raise exception 'too_young'; end if;
+    if new.birth_date > current_date - interval '18 years' then raise exception 'too_young'; end if;
     new.age := extract(year from age(new.birth_date))::int;
   end if;
   if tg_op = 'INSERT' then new.accepted_terms_at := now(); end if; -- sign-up requires ticking the terms box
@@ -141,8 +141,6 @@ language sql security definer set search_path = public stable as $$
     and (c.looking_for = 'everyone' or (c.looking_for = 'men' and me.gender = 'man') or (c.looking_for = 'women' and me.gender = 'woman'))
     and c.real_age between me.pref_age_min and me.pref_age_max
     and me.real_age between c.pref_age_min and c.pref_age_max
-    -- under-18s only meet people up to 19; adults over 19 never see them
-    and ((c.real_age >= 18 and me.real_age >= 18) or greatest(c.real_age, me.real_age) <= 19)
     and (c.km is null or c.km <= least(me.max_distance_km, c.max_distance_km))
   -- shortcut: the client ranks at most 300 candidates; move scoring into SQL if that cuts good matches
   order by c.liked_me desc, c.created_at desc

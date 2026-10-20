@@ -7,7 +7,7 @@ import { LegalModal } from './Legal'
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
 const DISTANCES = [5, 10, 25, 50, 100, 200, 500] // must match profiles_max_distance_km_check
-export const MIN_AGE = 17
+export const MIN_AGE = 18
 // Database errors (supabase/launch.sql) in words people understand.
 const DB_ERRORS = {
   too_young: `Tens de ter pelo menos ${MIN_AGE} anos.`,

@@ -19,7 +19,7 @@ const wants = (who, gender) =>
 const inRange = (h, min, max) =>
   h == null || (min == null && max == null) ? 0.5 : h >= (min ?? 0) && h <= (max ?? Infinity) ? 1 : 0
 
-const ageOk = (who, age) => age >= (who.pref_age_min ?? 17) && age <= (who.pref_age_max ?? 99)
+const ageOk = (who, age) => age >= (who.pref_age_min ?? 18) && age <= (who.pref_age_max ?? 99)
 
 export function score(me, c) {
   if (!wants(me, c.gender) || !wants(c, me.gender)) return null

@@ -77,10 +77,11 @@ function Auth() {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [legal, setLegal] = useState(null)
+  const [accepted, setAccepted] = useState(false)
   const box = useRef(null)
   const captcha = useCaptcha(box)
 
-  const switchMode = () => { setSignUp(!signUp); setMsg(''); setConfirm('') }
+  const switchMode = () => { setSignUp(!signUp); setMsg(''); setConfirm(''); setAccepted(false) }
   const submit = async (e) => {
     e.preventDefault()
     const u = username.trim().toLowerCase()
@@ -120,7 +121,7 @@ function Auth() {
         )}
         {signUp && (
           <label className="consent">
-            <input type="checkbox" required />
+            <input type="checkbox" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
             <span>
               Tenho pelo menos {MIN_AGE} anos e aceito os <button type="button" className="link" onClick={() => setLegal('terms')}>Termos</button> e
               a <button type="button" className="link" onClick={() => setLegal('privacy')}>Política de Privacidade</button>, incluindo
@@ -129,7 +130,7 @@ function Auth() {
           </label>
         )}
         <div ref={box} className="captcha" />
-        <button className="primary-button" disabled={busy}>{busy ? '…' : signUp ? 'Criar conta' : 'Entrar'}</button>
+        <button className="primary-button" disabled={busy || (signUp && !accepted)}>{busy ? '…' : signUp ? 'Criar conta' : 'Entrar'}</button>
         {msg && <p className="form-error">{msg}</p>}
         <p className="switch">
           {signUp ? 'Já tens conta?' : 'Ainda não tens conta?'}{' '}
