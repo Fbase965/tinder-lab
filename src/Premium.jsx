@@ -196,24 +196,34 @@ export function AdminPanel({ onClose, toast }) {
 // Sends a test push (supabase/push-test.sql) and shows what the last deliveries returned.
 function PushTester({ toast }) {
   const [username, setUsername] = useState('')
+  const [message, setMessage] = useState('')
+  const [everyone, setEveryone] = useState(false)
   const [status, setStatus] = useState(null)
   const [busy, setBusy] = useState(false)
   const refresh = () => supabase.rpc('admin_push_status').then(({ data, error }) => setStatus(error ? { error: error.message } : data?.[0]))
   const send = async () => {
+    if (everyone && !confirm(`Enviar “${message.trim() || 'Notificação de teste'}” a TODOS os utilizadores?`)) return
     setBusy(true)
-    const { data, error } = await supabase.rpc('admin_test_push', { p_username: username.trim() || null })
+    const { data, error } = await supabase.rpc('admin_test_push', { p_username: everyone ? '*' : username.trim() || null, p_message: message.trim() || null })
     setBusy(false)
     if (error) return toast(error.message.includes('user_not_found') ? `Não existe o username “${username}”` : error.message)
+    setMessage('')
     const n = data?.[0]?.dispositivos ?? 0
     toast(n ? `Enviada para ${n} ${n === 1 ? 'dispositivo' : 'dispositivos'}` : 'Esta conta não tem notificações ativas em nenhum dispositivo')
     setTimeout(refresh, 3000) // pg_net delivers asynchronously
   }
   return (
     <div className="push-tester">
-      <span className="settings-label">TESTAR NOTIFICAÇÕES</span>
+      <span className="settings-label">ENVIAR NOTIFICAÇÃO</span>
+      <textarea className="push-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={200} rows={2}
+        placeholder="Mensagem (vazio = notificação de teste)" />
+      <div className="choice-row push-target">
+        <button type="button" className={!everyone ? 'selected' : ''} onClick={() => setEveryone(false)}>Uma conta</button>
+        <button type="button" className={everyone ? 'selected' : ''} onClick={() => setEveryone(true)}>Todos</button>
+      </div>
       <div className="push-row">
-        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username (vazio = tu)" autoCapitalize="none" />
-        <button type="button" className="primary-button" onClick={send} disabled={busy}>{busy ? '…' : 'Enviar'}</button>
+        {!everyone && <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username (vazio = tu)" autoCapitalize="none" />}
+        <button type="button" className="primary-button" onClick={send} disabled={busy}>{busy ? '…' : everyone ? 'Enviar a todos' : 'Enviar'}</button>
       </div>
       <button type="button" className="link" onClick={refresh}>Ver estado</button>
       {status?.error && <p className="form-error">{status.error}</p>}
