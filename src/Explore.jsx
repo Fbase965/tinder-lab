@@ -50,8 +50,8 @@ export function Explore({ me, deck, swipe, openSheet }) {
       </div>
       {!list.length && <p className="empty-note">{q ? `Ninguém com “${query}”.` : 'Não há perfis novos por agora.'}</p>}
       <div className="profile-grid">
-        {shown.map((c) => (
-          <article className="mini-profile" key={c.id} onClick={() => openSheet(c)}>
+        {shown.map((c, i) => (
+          <article className="mini-profile" key={c.id} style={{ '--i': i }} onClick={() => openSheet(c)}>
             <Avatar p={c} />
             <div className="mini-shade" />
             <span className="match-badge">{matchPercent(c.score)}% match</span>

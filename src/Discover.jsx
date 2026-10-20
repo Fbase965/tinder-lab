@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from './icons'
-import { Avatar } from './App'
+import { Avatar, Modal } from './App'
 import { matchPercent, sharedInterests, WEIGHTS } from './algorithm'
 
 const FLY_MS = 330
@@ -23,6 +23,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
   const choose = async (kind) => {
     if (!c || leaving) return
     if (kind === 'super' && superLeft <= 0) return swipe(c, kind) // shows the limit toast, card stays
+    navigator.vibrate?.(8)
     setLeaving(kind)
     await new Promise((ok) => setTimeout(ok, FLY_MS))
     setLeaving(null); setDrag({ x: 0, y: 0 }); setPhotoIdx(0)
@@ -63,7 +64,10 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
   const transform = leaving
     ? { nope: 'translate(-140%, 30px) rotate(-18deg)', like: 'translate(140%, 30px) rotate(18deg)', super: 'translate(0, -130%)' }[leaving]
     : `translate(${drag.x}px, ${Math.min(drag.y, 0) * 0.5}px) rotate(${drag.x * 0.04}deg)`
-  const stamp = leaving ?? (drag.y < -60 && Math.abs(drag.x) < 60 ? 'super' : drag.x > 35 ? 'like' : drag.x < -35 ? 'nope' : null)
+  // Stamps, the next card and the action buttons all follow how far the card is dragged.
+  const stamp = leaving ?? (drag.y < -20 && Math.abs(drag.x) < -drag.y ? 'super' : drag.x > 12 ? 'like' : drag.x < -12 ? 'nope' : null)
+  const strength = leaving ? 1 : Math.min(1, stamp === 'super' ? -drag.y / 120 : Math.abs(drag.x) / 90)
+  const progress = leaving ? 1 : Math.min(1, Math.hypot(drag.x, drag.y) / 140)
   const shared = c ? sharedInterests(me, c) : []
   const pct = c ? matchPercent(c.score) : 0
 
@@ -81,7 +85,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
       <div className="discover-layout">
         <div className="swipe-column">
           <div className="card-stage">
-            {!deck && <div className="profile-card empty-card"><p>A procurar pessoas…</p></div>}
+            {!deck && <div className="profile-card skeleton" aria-label="A procurar pessoas…" />}
             {deck && !c && (
               <div className="profile-card empty-card">
                 <Icon name="sparkles" size={34} />
@@ -93,19 +97,27 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
                 </div>
               </div>
             )}
-            {next && <article className="profile-card next-card"><Avatar p={next} /></article>}
+            {next && (
+              <article className={`profile-card next-card ${start.current ? 'dragging' : ''}`}
+                style={{ transform: `scale(${0.955 + 0.045 * progress}) translateY(${14 * (1 - progress)}px)`, opacity: 0.6 + 0.4 * progress }}>
+                <Avatar p={next} />
+              </article>
+            )}
             {c && (
               <article key={c.id} className={`profile-card active-card ${start.current ? 'dragging' : ''}`} style={{ transform }}
                 onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
                 onPointerCancel={() => { start.current = null; setDrag({ x: 0, y: 0 }) }}>
-                <Avatar p={c} idx={photoIdx} />
+                <Avatar key={photoIdx} p={c} idx={photoIdx} />
                 {c.photos.length > 1 && (
                   <div className="photo-bars">{c.photos.map((u, i) => <span key={u} className={i === photoIdx ? 'on' : ''} />)}</div>
                 )}
                 <div className="photo-shade" />
-                {stamp === 'like' && <div className="swipe-stamp like-stamp">GOSTO</div>}
-                {stamp === 'nope' && <div className="swipe-stamp nope-stamp">PASSO</div>}
-                {stamp === 'super' && <div className="swipe-stamp super-stamp">SUPER LIKE</div>}
+                <span className="card-match">{pct}% match</span>
+                {stamp && (
+                  <div className={`swipe-stamp ${stamp}-stamp`} style={{ '--k': strength }}>
+                    {{ like: 'GOSTO', nope: 'PASSO', super: 'SUPER LIKE' }[stamp]}
+                  </div>
+                )}
                 <div className="card-content">
                   {c.super_likes_me && <div className="super-badge"><Icon name="star" size={13} filled /> Deu-te Super Like</div>}
                   {c.distance_km != null && (
@@ -125,7 +137,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
               </article>
             )}
           </div>
-          <div className="actions">
+          <div className="actions" data-dir={strength > 0.4 ? stamp : undefined}>
             <button className="action-button undo" aria-label="Desfazer" onClick={rewind} disabled={!canRewind}>
               <Icon name="undo" />
             </button>
@@ -155,17 +167,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
               </div>
             </button>
           )}
-          {c && showParts && (
-            <div className="score-parts">
-              {Object.entries(c.score.parts).map(([k, v]) => (
-                <div key={k}>
-                  <span>{PART_LABELS[k] ?? k}</span>
-                  <i><b style={{ width: `${v * 100}%` }} /></i>
-                  <small>{(v * WEIGHTS[k]).toFixed(1)}/{WEIGHTS[k]}</small>
-                </div>
-              ))}
-            </div>
-          )}
+          {c && showParts && <ScoreParts score={c.score} />}
           {complete < 100 && (
             <div className="tip-card">
               <Icon name="sparkles" />
@@ -182,26 +184,53 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
   )
 }
 
+function ScoreParts({ score }) {
+  return (
+    <div className="score-parts">
+      {Object.entries(score.parts).map(([k, v], i) => (
+        <div key={k}>
+          <span>{PART_LABELS[k] ?? k}</span>
+          <i><b style={{ width: `${v * 100}%`, animationDelay: `${i * 50}ms` }} /></i>
+          <small>{(v * WEIGHTS[k]).toFixed(1)}/{WEIGHTS[k]}</small>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Full profile details, opened from the card's (i) or from Explore.
 export function ProfileSheet({ me, p, onClose, onSwipe }) {
   const [idx, setIdx] = useState(0)
+  const [showParts, setShowParts] = useState(false)
+  const picked = useRef(null) // swipe after the sheet's exit animation, so its buttons don't vanish mid-animation
   const shared = sharedInterests(me, p)
+  // Tap the right/left half of the photo to step through photos, like on the card.
+  const step = (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const d = e.clientX - r.left > r.width / 2 ? 1 : -1
+    setIdx((i) => Math.min(p.photos.length - 1, Math.max(0, i + d)))
+  }
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="profile-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-photo">
-          <Avatar p={p} idx={idx} />
+    <Modal className="profile-sheet" onClose={() => { onClose(); if (picked.current) onSwipe(picked.current) }}>
+      {(close) => <>
+        <div className="sheet-photo" onClick={(e) => !e.target.closest('button') && step(e)}>
+          <Avatar key={idx} p={p} idx={idx} />
           {p.photos.length > 1 && (
             <div className="photo-bars">{p.photos.map((u, i) => (
               <button key={u} className={i === idx ? 'on' : ''} onClick={() => setIdx(i)} aria-label={`Foto ${i + 1}`} />
             ))}</div>
           )}
-          <button className="icon-button sheet-close" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button>
+          <button className="icon-button sheet-close" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
         </div>
         <div className="preview-content">
           <div className="name-line dark"><span>{p.name}, {p.age}</span></div>
           <p>{[p.job, p.height_cm && `${p.height_cm} cm`, distanceText(p.distance_km)].filter(Boolean).join(' · ')}</p>
-          {p.score && <span className="match-badge static">{matchPercent(p.score)}% match</span>}
+          {p.score && (
+            <button className="match-badge static" onClick={() => setShowParts(!showParts)} aria-expanded={showParts}>
+              {matchPercent(p.score)}% match · {showParts ? 'esconder' : 'porquê?'}
+            </button>
+          )}
+          {p.score && showParts && <ScoreParts score={p.score} />}
           {p.interests.length > 0 && (
             <div className="tags dark-tags">
               {p.interests.map((t) => <span key={t} className={shared.includes(t) ? 'shared' : ''}>{t}</span>)}
@@ -210,13 +239,13 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
           {p.bio && <blockquote>“{p.bio}”</blockquote>}
         </div>
         {onSwipe && (
-          <div className="actions">
-            <button className="action-button dislike" aria-label="Passo" onClick={() => onSwipe('nope')}><Icon name="close" size={32} /></button>
-            <button className="action-button like" aria-label="Gosto" onClick={() => onSwipe('like')}><Icon name="heart" size={30} filled /></button>
-            <button className="action-button super" aria-label="Super Like" onClick={() => onSwipe('super')}><Icon name="star" filled /></button>
+          <div className="actions sheet-actions">
+            <button className="action-button dislike" aria-label="Passo" onClick={() => { picked.current = 'nope'; close() }}><Icon name="close" size={32} /></button>
+            <button className="action-button like" aria-label="Gosto" onClick={() => { picked.current = 'like'; close() }}><Icon name="heart" size={30} filled /></button>
+            <button className="action-button super" aria-label="Super Like" onClick={() => { picked.current = 'super'; close() }}><Icon name="star" filled /></button>
           </div>
         )}
-      </div>
-    </div>
+      </>}
+    </Modal>
   )
 }

@@ -39,8 +39,8 @@ export function Messages({ me, matches, selected, onSelect, toast }) {
           <div className="new-matches">
             <span>Novos matches</span>
             <div>
-              {fresh.map((m) => (
-                <button key={m.id} onClick={() => onSelect(m.id)}>
+              {fresh.map((m, i) => (
+                <button key={m.id} style={{ '--i': i }} onClick={() => onSelect(m.id)}>
                   <i><Avatar p={m} /></i>
                   <span>{m.name}</span>
                 </button>
@@ -49,8 +49,8 @@ export function Messages({ me, matches, selected, onSelect, toast }) {
           </div>
         )}
         <div className="chat-list">
-          {talking.map((m) => (
-            <button className={`chat-row ${selected === m.id ? 'active' : ''}`} key={m.id} onClick={() => onSelect(m.id)}>
+          {talking.map((m, i) => (
+            <button className={`chat-row ${selected === m.id ? 'active' : ''}`} key={m.id} style={{ '--i': i }} onClick={() => onSelect(m.id)}>
               <i className="avatar-wrap"><Avatar p={m} /></i>
               <div>
                 <strong>{m.name}</strong>
@@ -85,7 +85,12 @@ function Chat({ me, other, onBack, onGone, toast }) {
       .subscribe()
     return () => supabase.removeChannel(ch)
   }, [a, b])
-  useEffect(() => { body.current?.scrollTo({ top: body.current.scrollHeight }) }, [msgs])
+  const first = useRef(true) // jump to the bottom on open, glide for new messages
+  useEffect(() => {
+    if (!msgs) return
+    body.current?.scrollTo({ top: body.current.scrollHeight, behavior: first.current ? 'auto' : 'smooth' })
+    first.current = false
+  }, [msgs])
 
   const send = async (e) => {
     e.preventDefault()
@@ -147,7 +152,7 @@ function Chat({ me, other, onBack, onGone, toast }) {
         ))}
       </div>
       <form className="message-composer" onSubmit={send}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreve uma mensagem..." maxLength={2000} />
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreve uma mensagem..." maxLength={2000} enterKeyHint="send" />
         <button className="send-button" aria-label="Enviar" disabled={!text.trim()}><Icon name="send" size={18} filled /></button>
       </form>
     </section>

@@ -52,7 +52,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .side-profile strong { font-size: 13px; }.side-profile span { color: var(--muted); font-size: 10px; }
 .mobile-header, .bottom-nav { display: none; }
 
-.page-shell { min-height: 100vh; margin-left: 244px; }
+.page-shell { min-height: 100vh; margin-left: 244px; overflow-x: clip; } /* a card dragged off-screen must not widen the page */
 .discover-page, .standard-page { width: min(1180px, calc(100% - 80px)); min-height: 100vh; margin: 0 auto; padding: 38px 0 50px; }
 .page-heading { height: 68px; margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .kicker { color: var(--coral); font-size: 9px; font-weight: 800; letter-spacing: 1.8px; }
@@ -314,4 +314,232 @@ p { margin: 0; }
 @media (max-width: 700px) {
   .discover-page .page-heading .filter-trigger { display: none; }
   .card-stage { height: calc(100svh - 300px); }
+}
+
+/* ---- Motion ----
+   One vocabulary everywhere: things enter by rising and fading in, panels slide from where they live,
+   presses compress. Durations stay short (150–420 ms) so the app never waits on an animation. */
+@property --pct { syntax: '<number>'; inherits: true; initial-value: 0; }
+:root {
+  --ease-out: cubic-bezier(.22, .8, .24, 1);
+  --ease-spring: cubic-bezier(.34, 1.5, .5, 1);
+  --ease-in: cubic-bezier(.5, 0, .75, 0);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes rise-big { from { opacity: 0; transform: translateY(24px) scale(.98); } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@keyframes dialog-out { to { opacity: 0; transform: translateY(10px) scale(.97); } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes sheet-out { to { transform: translateY(100%); } }
+@keyframes promote { from { transform: scale(.955) translateY(14px); } }
+@keyframes photo-in { from { opacity: .35; } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes ring-fill { from { --pct: 0; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes nav-pop { 40% { transform: scale(1.22) translateY(-2px); } }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(8px) scale(.94); } }
+@keyframes toast-life { 0% { opacity: 0; transform: translate(-50%, 12px) scale(.96); } 10%, 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 6px); } }
+@keyframes float-up { 0% { opacity: 0; transform: translateY(0) scale(var(--s)); } 15% { opacity: .9; } 100% { opacity: 0; transform: translateY(-75vh) rotate(18deg) scale(var(--s)); } }
+@keyframes slide-left { from { opacity: 0; transform: translateX(-60px) rotate(-8deg); } }
+@keyframes slide-right { from { opacity: 0; transform: translateX(60px) rotate(8deg); } }
+@keyframes title-pop { from { opacity: 0; transform: scale(.6); } 60% { opacity: 1; } }
+
+/* pages */
+.page-enter { animation: rise .38s var(--ease-out); }
+.stagger > *, .profile-grid > *, .chat-list > *, .new-matches button { animation: rise-big .5s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+.stagger > :nth-child(2) { --i: 1; } .stagger > :nth-child(3) { --i: 2; } .stagger > :nth-child(4) { --i: 3; } .stagger > :nth-child(5) { --i: 4; } .stagger > :nth-child(n+6) { --i: 5; }
+.auth-aside > * { animation: rise-big .6s var(--ease-out) backwards; }
+.auth-aside > :nth-child(2) { animation-delay: 80ms; } .auth-aside > :nth-child(3) { animation-delay: 160ms; }
+.auth-card { animation: rise-big .55s var(--ease-out) 120ms backwards; }
+.auth-card .field { animation: rise .4s var(--ease-out) backwards; }
+
+/* buttons: hover lifts (pointer devices only), press compresses */
+.primary-button, .filter-trigger, .icon-button, .choice-row button, .featured-banner button, .tip-card button, .side-link, .chat-row, .settings-card > button, .bottom-nav button, .slot, .mini-profile > button, .send-button, .logout-button, .link {
+  transition: transform .18s var(--ease-out), background-color .2s, color .2s, border-color .2s, box-shadow .2s, opacity .2s;
+}
+.primary-button:active, .filter-trigger:active, .icon-button:active, .choice-row button:active, .featured-banner button:active,
+.chat-row:active, .settings-card > button:active, .send-button:active, .slot:active, .mini-profile > button:active { transform: scale(.96); }
+@media (hover: hover) {
+  .primary-button:hover { box-shadow: 0 12px 28px rgba(255,91,95,.32); transform: translateY(-1px); }
+  .filter-trigger:hover, .icon-button:hover { border-color: #d6d6cd; transform: translateY(-1px); }
+  .chat-row:hover:not(.active), .settings-card > button:hover { background: #f8f8f4; }
+  .mini-profile:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(25,30,27,.16); }
+  .mini-profile:hover > img { transform: scale(1.04); }
+}
+.mini-profile { transition: transform .3s var(--ease-out), box-shadow .3s var(--ease-out); }
+.mini-profile > img { transition: transform .6s var(--ease-out); }
+:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: 0; }
+.field input, .field textarea, .height-row input { transition: border-color .2s, box-shadow .2s; }
+.field input:focus, .field textarea:focus, .height-row input:focus { box-shadow: 0 0 0 4px rgba(255,91,95,.12); }
+
+/* navigation */
+.side-link.active svg, .bottom-nav button.active svg { animation: nav-pop .4s var(--ease-spring); }
+.side-link i, .bottom-nav i { animation: title-pop .35s var(--ease-spring); }
+
+/* swipe card */
+.active-card { animation: promote .28s var(--ease-out); }
+.next-card { transition: transform .33s var(--ease-out), opacity .33s; }
+.next-card.dragging { transition: none; }
+.profile-card img { animation: photo-in .28s ease-out; }
+.photo-bars > * { transition: background-color .25s; }
+.swipe-stamp { opacity: var(--k, 1); transform: var(--stamp-rot) scale(calc(1.15 - .15 * var(--k, 1))); }
+.like-stamp { --stamp-rot: rotate(-10deg); } .nope-stamp { --stamp-rot: rotate(10deg); }
+.super-stamp { --stamp-rot: translateX(-50%) rotate(-8deg); }
+.card-match { position: absolute; top: 24px; left: 14px; z-index: 3; display: none; padding: 6px 10px; border-radius: 999px; color: #156e55; background: rgba(219,255,240,.94); font-size: 11px; font-weight: 800; }
+.actions .action-button { transition: transform .2s var(--ease-out), box-shadow .2s, opacity .2s; }
+.actions[data-dir="like"] .like, .actions[data-dir="nope"] .dislike, .actions[data-dir="super"] .super { transform: scale(1.12); box-shadow: 0 10px 26px rgba(22,27,25,.18); }
+.actions[data-dir] .action-button:not(.like):not(.dislike):not(.super), .actions[data-dir="like"] .dislike, .actions[data-dir="like"] .super,
+.actions[data-dir="nope"] .like, .actions[data-dir="nope"] .super, .actions[data-dir="super"] .like, .actions[data-dir="super"] .dislike { opacity: .45; transform: scale(.94); }
+.skeleton { background: linear-gradient(100deg, #ecece6 30%, #f6f6f1 50%, #ecece6 70%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; box-shadow: none; }
+.loading { animation: rise .3s var(--ease-out) .25s backwards; }
+
+/* compatibility */
+.match-ring { animation: ring-fill .9s var(--ease-out); transition: --pct .6s var(--ease-out); }
+.score-parts { animation: rise .3s var(--ease-out); }
+.score-parts b { transform-origin: left; animation: grow-x .6s var(--ease-out) backwards; }
+.tip-card { animation: rise .4s var(--ease-out) .2s backwards; }
+
+/* modals: dialog on desktop, bottom sheet on phones (see mobile block) */
+.modal-backdrop { animation: fade-in .22s ease; }
+.modal-backdrop.closing { animation: fade-out .27s ease forwards; } /* outlasts the panel's exit so it finishes before unmount */
+.modal-backdrop > * { animation: dialog-in .32s var(--ease-out); }
+.modal-backdrop.closing > * { animation: dialog-out .2s var(--ease-in) forwards; }
+.profile-sheet, .filter-modal { overscroll-behavior: contain; }
+.match-badge.static { border: 0; cursor: pointer; }
+
+/* match celebration */
+.match-overlay { background: radial-gradient(circle at 50% 40%, rgba(255,91,95,.35), rgba(12,18,15,.88) 60%); overflow: hidden; }
+.match-overlay > .match-modal { animation: none; }
+.match-overlay.closing > .match-modal { animation: dialog-out .2s var(--ease-in) forwards; }
+.match-modal .pair > :first-child { animation: slide-left .6s var(--ease-spring) .05s backwards; }
+.match-modal .pair > :last-child { animation: slide-right .6s var(--ease-spring) .05s backwards; }
+.match-modal .aside-title { animation: title-pop .55s var(--ease-spring) .3s backwards; }
+.match-modal p, .match-modal .primary-button, .match-modal .link { animation: rise .45s var(--ease-out) backwards; }
+.match-modal p { animation-delay: .45s; } .match-modal .primary-button { animation-delay: .52s; } .match-modal .link { animation-delay: .6s; }
+.hearts { position: fixed; inset: 0; pointer-events: none; }
+.hearts i { position: absolute; left: var(--x); bottom: -30px; color: var(--coral); opacity: 0; animation: float-up 3.2s var(--ease-out) var(--d) infinite; }
+
+/* messages */
+.bubble:last-child { animation: bubble-in .3s var(--ease-out); transform-origin: bottom left; }
+.bubble.mine:last-child { transform-origin: bottom right; }
+.chat-panel:not(.chat-empty) { animation: rise .3s var(--ease-out); }
+.match-intro { animation: rise .45s var(--ease-out); }
+.menu { animation: dialog-in .18s var(--ease-out); transform-origin: top right; }
+.menu button:hover { background: #f8f8f4; }
+
+/* misc */
+.toast { animation: toast-life 2.2s var(--ease-out) forwards; }
+.spinner { width: 22px; height: 22px; border: 2.5px solid #ffd9d9; border-top-color: var(--coral); border-radius: 50%; animation: spin .7s linear infinite; }
+.slot.filled { animation: rise .35s var(--ease-out); }
+.slot .remove { transition: transform .15s; } .slot .remove:active { transform: scale(.85); }
+
+/* ---- Phones: the same app, laid out for one thumb ---- */
+@media (max-width: 700px) {
+  html { -webkit-text-size-adjust: 100%; }
+  body { overscroll-behavior-y: none; }
+  .mobile-header { height: calc(58px + var(--safe-t)); padding-top: var(--safe-t); }
+  .bottom-nav { height: calc(64px + var(--safe-b)); padding-bottom: var(--safe-b); }
+  .bottom-nav span { font-size: 10px; }
+  .bottom-nav button::before { content: ''; position: absolute; top: 0; left: 50%; width: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--coral); transform: translateX(-50%); transition: width .3s var(--ease-out); }
+  .bottom-nav button.active::before { width: 28px; }
+  .bottom-nav i { font-size: 8px; }
+  .page-shell { padding-bottom: calc(64px + var(--safe-b)); }
+
+  /* Discover fills exactly the space between header and tab bar: big card, buttons in thumb reach. */
+  .discover-page { height: calc(100dvh - 58px - 64px - var(--safe-t) - var(--safe-b)); min-height: 480px; padding: 10px 12px 0; display: flex; flex-direction: column; }
+  .discover-page .page-heading { display: none; }
+  .discover-layout, .swipe-column { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: stretch; }
+  .card-stage { flex: 1; height: auto; min-height: 0; }
+  .card-match { display: block; }
+  .card-content { padding: 0 18px 20px; }
+  .tags span { font-size: 12px; padding: 6px 11px; }
+  .info-button { right: 16px; bottom: 20px; width: 44px; height: 44px; display: grid; place-items: center; }
+  .actions { height: 88px; gap: 18px; }
+  .dislike, .like { width: 62px; height: 62px; }
+  .undo, .super { width: 48px; height: 48px; }
+  .swipe-stamp { font-size: 26px; }
+  .like-stamp, .nope-stamp { top: 52px; }
+
+  /* readable text and 16px inputs (smaller makes iOS zoom in on focus) */
+  .kicker, .aside-kicker { font-size: 10px; }
+  .field input, .field textarea, .height-row input, .search-box input, .message-composer input { font-size: 16px; }
+  .primary-button { height: 52px; font-size: 14px; }
+  .featured-banner span { font-size: 10px; } .featured-banner p { font-size: 13px; } .featured-banner button { padding: 11px 16px; font-size: 13px; }
+  .section-row button { font-size: 13px; }
+  .mini-profile > div > span { font-size: 11px; } .match-badge { font-size: 10px; }
+  .mini-profile > button { width: 40px; height: 40px; }
+
+  /* Explore: search becomes a full-width row instead of an unusable icon */
+  .standard-page > .page-heading { height: auto; flex-wrap: wrap; }
+  .standard-page > .page-heading .search-box { width: 100%; height: 46px; border-radius: 14px; justify-content: flex-start; }
+  .standard-page > .page-heading .search-box input { display: block; }
+
+  /* Messages */
+  .new-matches > span { font-size: 10px; }
+  .new-matches > div { overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 0 18px; }
+  .new-matches button { flex: none; width: 64px; font-size: 11px; }
+  .new-matches i { width: 60px; height: 60px; }
+  .chat-row { padding: 12px; grid-template-columns: 52px 1fr auto; }
+  .chat-row .avatar-wrap { width: 52px; height: 52px; }
+  .chat-row strong { font-size: 15px; } .chat-row span { font-size: 13px; } .chat-row small { font-size: 11px; }
+  .chat-row em { width: 20px; height: 20px; font-size: 11px; line-height: 20px; }
+  /* An open chat takes the whole screen, like a native messenger. */
+  .in-chat .mobile-header, .in-chat .bottom-nav { display: none; }
+  .in-chat .page-shell { padding-bottom: 0; }
+  .messages-page.has-chat .chat-panel { position: fixed; inset: 0; z-index: 40; height: 100dvh; padding-top: var(--safe-t); animation: sheet-from-right .32s var(--ease-out); }
+  .chat-panel > header { height: 64px; flex: none; }
+  .chat-person strong { font-size: 16px; } .chat-person span { font-size: 12px; }
+  .bubble { font-size: 15px; padding: 10px 14px; border-radius: 18px; }
+  .date-divider { font-size: 10px; }
+  .match-intro strong { font-size: 17px; } .match-intro span { font-size: 12px; }
+  .message-composer { flex: none; height: auto; min-height: 56px; margin: 0 10px calc(10px + var(--safe-b)); border-radius: 28px; padding: 6px 6px 6px 16px; }
+  .message-composer .send-button { width: 44px; height: 44px; }
+
+  /* Profile */
+  .profile-stats span, .settings-label { font-size: 11px; }
+  .settings-card button strong { font-size: 14px; } .settings-card button span { font-size: 12px; }
+  .settings-card > button { padding: 14px 6px; }
+  .slot .remove { width: 32px; height: 32px; font-size: 18px; }
+  .main-badge { font-size: 11px; }
+  .choice-row button { height: 44px; font-size: 13px; }
+  .filter-modal label { font-size: 13px; }
+  .field > span, .field-label { font-size: 11px; }
+
+  /* Modals become bottom sheets that slide up and back down */
+  .modal-backdrop > .filter-modal, .modal-backdrop > .profile-sheet { animation: sheet-in .38s var(--ease-out); }
+  .modal-backdrop.closing > .filter-modal, .modal-backdrop.closing > .profile-sheet { animation: sheet-out .26s var(--ease-in) forwards; }
+  .filter-modal { max-height: 92dvh; overflow-y: auto; padding-bottom: calc(30px + var(--safe-b)); }
+  .profile-sheet { width: 100%; }
+  .sheet-actions { padding-bottom: var(--safe-b); height: calc(90px + var(--safe-b)); }
+  .sheet-photo .photo-bars button { height: 18px; background-clip: content-box; padding: 7px 0; }
+  .sheet-close { top: 28px; }
+  .preview-content > p { font-size: 14px; }
+  .preview-content blockquote { font-size: 16px; }
+
+  .toast { bottom: calc(76px + var(--safe-b)); font-size: 13px; padding: 12px 18px; max-width: calc(100% - 32px); }
+  .in-chat .toast { bottom: calc(86px + var(--safe-b)); }
+  .match-overlay { align-items: center; }
+  .match-modal { padding: 0 24px; }
+  .match-modal .pair > * { width: 112px; height: 112px; }
+  .match-modal .primary-button { width: min(300px, 100%); }
+  .auth-page { padding: calc(32px + var(--safe-t)) 0 calc(32px + var(--safe-b)); }
+  .onboarding { padding-bottom: calc(60px + var(--safe-b)); }
+}
+@keyframes sheet-from-right { from { transform: translateX(28%); opacity: 0; } }
+/* short phones (iPhone SE) */
+@media (max-width: 700px) and (max-height: 700px) {
+  .actions { height: 76px; gap: 14px; }
+  .dislike, .like { width: 56px; height: 56px; }
+  .undo, .super { width: 44px; height: 44px; }
+  .name-line > span { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hearts { display: none; }
+  .toast { animation: none; }
+  .skeleton { animation: none; }
 }

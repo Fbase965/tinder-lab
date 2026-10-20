@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { Icon } from './icons'
-import { Avatar } from './App'
+import { Avatar, Modal } from './App'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -45,7 +45,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             {me.bio && <blockquote>“{me.bio}”</blockquote>}
           </div>
         </section>
-        <section className="settings-column">
+        <section className="settings-column stagger">
           <div className="profile-stats">
             <div><strong>{likes ?? '–'}</strong><span>Gostos</span></div>
             <div><strong>{matchesCount}</strong><span>Matches</span></div>
@@ -121,21 +121,22 @@ export function PreferencesModal({ me, onClose, onSaved }) {
   const [err, setErr] = useState('')
   const num = (k) => (e) => setP({ ...p, [k]: e.target.value === '' ? '' : Number(e.target.value) })
 
-  const save = async () => {
+  const save = async (close) => {
     if (p.pref_height_min !== '' && p.pref_height_max !== '' && p.pref_height_min > p.pref_height_max)
       return setErr('Altura: o mínimo tem de ser menor que o máximo.')
     const row = { ...p, pref_height_min: p.pref_height_min === '' ? null : p.pref_height_min,
       pref_height_max: p.pref_height_max === '' ? null : p.pref_height_max }
     const { data, error } = await supabase.from('profiles').update(row).eq('id', me.id).select().single()
-    error ? setErr(error.message) : onSaved(data)
+    if (error) return setErr(error.message)
+    onSaved(data); close()
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="filter-modal" onClick={(e) => e.stopPropagation()}>
+    <Modal className="filter-modal" onClose={onClose}>
+      {(close) => <>
         <div className="modal-heading">
           <div><span className="kicker">DESCOBERTA</span><div className="modal-title">Preferências</div></div>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button>
+          <button className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
         </div>
         <label>Mostrar-me</label>
         <div className="choice-row">
@@ -159,9 +160,9 @@ export function PreferencesModal({ me, onClose, onSaved }) {
           <input type="number" min="120" max="230" placeholder="máx. cm" value={p.pref_height_max} onChange={num('pref_height_max')} />
         </div>
         {err && <p className="form-error">{err}</p>}
-        <button className="primary-button" onClick={save}>Aplicar preferências</button>
-      </div>
-    </div>
+        <button className="primary-button" onClick={() => save(close)}>Aplicar preferências</button>
+      </>}
+    </Modal>
   )
 }
 
@@ -303,7 +304,7 @@ function PhotoGrid({ photos, onChange, onError }) {
           return (
             <button type="button" key={i} className="slot empty" disabled={busy > 0}
               onClick={() => input.current.click()} aria-label="Adicionar foto">
-              {i < photos.length + busy ? '…' : <Icon name="plus" />}
+              {i < photos.length + busy ? <span className="spinner" aria-label="A carregar" /> : <Icon name="plus" />}
             </button>
           )
         })}

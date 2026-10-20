@@ -71,7 +71,7 @@ function Auth() {
         <span className="aside-kicker">MATCH WITH INTENTION</span>
         <div className="aside-title">Pessoas reais.<br />Boas <em>conversas.</em></div>
       </aside>
-      <form className={`auth-card ${signUp ? 'signup' : ''}`} onSubmit={submit}>
+      <form key={signUp} className={`auth-card ${signUp ? 'signup' : ''}`} onSubmit={submit}>
         <span className="kicker">{signUp ? 'NOVA CONTA' : 'BEM-VINDO DE VOLTA'}</span>
         <div className="page-title">{signUp ? 'Cria a tua conta' : 'Entrar'}</div>
         <p className="sub">{signUp ? 'Escolhe um username e uma password. A seguir crias o teu perfil.' : 'Entra com o teu username.'}</p>
@@ -136,7 +136,7 @@ function Shell({ me, setMe }) {
   // Swipe from anywhere (card, explore grid, details sheet) goes through here.
   const swipe = async (card, kind) => {
     const res = await deckApi.swipe(card, kind)
-    if (res === 'match') { setMatched(card); matches.reload() }
+    if (res === 'match') { setMatched(card); matches.reload(); navigator.vibrate?.([20, 60, 30]) }
     else if (res && kind !== 'nope') toast(kind === 'super' ? `Super Like enviado a ${card.name}` : `Gostaste de ${card.name}`)
     return res
   }
@@ -144,7 +144,7 @@ function Shell({ me, setMe }) {
   const openChat = (p) => { setMatched(null); setPage('messages'); setChatWith(p.id) }
 
   return (
-    <main className="web-app">
+    <main className={`web-app ${page === 'messages' && chatWith ? 'in-chat' : ''}`}>
       <aside className="side-nav">
         <Brand />
         <nav aria-label="Navegação principal">
@@ -171,18 +171,20 @@ function Shell({ me, setMe }) {
       </header>
 
       <section className="page-shell">
-        {page === 'discover' && (
-          <Discover me={me} deckApi={deckApi} swipe={swipe} complete={complete} paused={!!(matched || sheet || filterOpen)}
-            openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')} />
-        )}
-        {page === 'explore' && <Explore me={me} deck={deckApi.deck} swipe={swipe} openSheet={setSheet} />}
-        {page === 'messages' && (
-          <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} />
-        )}
-        {page === 'profile' && (
-          <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}
-            matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast} />
-        )}
+        <div key={page} className="page-enter">
+          {page === 'discover' && (
+            <Discover me={me} deckApi={deckApi} swipe={swipe} complete={complete} paused={!!(matched || sheet || filterOpen)}
+              openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')} />
+          )}
+          {page === 'explore' && <Explore me={me} deck={deckApi.deck} swipe={swipe} openSheet={setSheet} />}
+          {page === 'messages' && (
+            <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} />
+          )}
+          {page === 'profile' && (
+            <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}
+              matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast} />
+          )}
+        </div>
       </section>
 
       <nav className="bottom-nav">
@@ -195,27 +197,55 @@ function Shell({ me, setMe }) {
         ))}
       </nav>
 
-      {toastText && <div className="toast" role="status">{toastText}</div>}
+      {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
       {filterOpen && (
         <PreferencesModal me={me} onClose={() => setFilterOpen(false)}
-          onSaved={(p) => { setMe(p); setFilterOpen(false); toast('Preferências atualizadas') }} />
+          onSaved={(p) => { setMe(p); toast('Preferências atualizadas') }} />
       )}
       {sheet && (
         <ProfileSheet me={me} p={sheet} onClose={() => setSheet(null)}
-          onSwipe={deckApi.deck?.some((c) => c.id === sheet.id) ? (kind) => { setSheet(null); swipe(sheet, kind) } : null} />
+          onSwipe={deckApi.deck?.some((c) => c.id === sheet.id) ? (kind) => swipe(sheet, kind) : null} />
       )}
       {matched && (
-        <div className="modal-backdrop match-overlay" onClick={() => setMatched(null)}>
-          <div className="match-modal" onClick={(e) => e.stopPropagation()}>
+        <Modal className="match-modal" backdropClass="match-overlay" onClose={() => setMatched(null)}>
+          {(close) => <>
+            <div className="hearts" aria-hidden="true">
+              {Array.from({ length: 12 }, (_, i) => (
+                <i key={i} style={{ '--x': `${(i * 37) % 100}%`, '--d': `${(i * 0.29) % 1.6}s`, '--s': 0.6 + ((i * 7) % 5) / 6 }}>
+                  <Icon name="heart" size={22} filled />
+                </i>
+              ))}
+            </div>
             <div className="pair"><Avatar p={me} /><Avatar p={matched} /></div>
             <div className="aside-title">É um <em>match!</em></div>
             <p>Tu e {matched.name} gostaram um do outro.</p>
             <button className="primary-button" onClick={() => openChat(matched)}>Enviar mensagem</button>
-            <button className="link" onClick={() => setMatched(null)}>Continuar a descobrir</button>
-          </div>
-        </div>
+            <button className="link" onClick={close}>Continuar a descobrir</button>
+          </>}
+        </Modal>
       )}
     </main>
+  )
+}
+
+// Backdrop + panel with enter and exit animations. Children may be a function to get `close` for their own buttons.
+export function Modal({ onClose, className, backdropClass = '', children }) {
+  const [closing, setClosing] = useState(false)
+  const close = () => setClosing(true)
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && setClosing(true)
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden' // no page scroll behind the sheet on phones
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = overflow }
+  }, [])
+  return (
+    <div className={`modal-backdrop ${backdropClass} ${closing ? 'closing' : ''}`} onClick={close}
+      onAnimationEnd={(e) => closing && e.target === e.currentTarget && onClose()}>
+      <div className={className} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        {typeof children === 'function' ? children(close) : children}
+      </div>
+    </div>
   )
 }
 
