@@ -14,7 +14,7 @@ const PART_LABELS = {
 export const distanceText = (km) => (km == null ? null : `a menos de ${km} km`)
 
 export function Discover({ me, deckApi, swipe, complete, paused, openFilters, openSheet, goProfile, boost }) {
-  const { deck, rewind, canRewind, superLeft, reload } = deckApi
+  const { deck, rewind, canRewind, superLeft, reload, recycle } = deckApi
   const [drag, setDrag] = useState({ x: 0, y: 0 })
   const [leaving, setLeaving] = useState(null)
   const [photoIdx, setPhotoIdx] = useState(0)
@@ -100,6 +100,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
                   <button className="empty-button primary" onClick={openFilters}><Icon name="sliders" size={17} />Preferências</button>
                   <button className="empty-button" onClick={reload}><Icon name="undo" size={17} />Atualizar</button>
                 </div>
+                <button className="link recycle-link" onClick={recycle}>Voltar a ver quem passei</button>
               </div>
             )}
             {next && (

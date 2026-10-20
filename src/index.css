@@ -668,3 +668,4 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .empty-button.primary { border-color: transparent; color: #fff; background: linear-gradient(135deg, #ff6d6f, #ef474f); box-shadow: 0 10px 24px rgba(239,71,79,.28); }
 .empty-button svg { flex: none; }
 .empty-card .empty-button svg { color: inherit; }
+.recycle-link { margin-top: 10px; font-size: 14px; }

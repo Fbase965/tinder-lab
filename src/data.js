@@ -56,7 +56,17 @@ export function useDeck(me, toast, plan, onLimit) {
     toast('Perfil recuperado')
   }
 
-  return { deck, swipe, rewind, canRewind: !!last, superLeft, reload }
+  // Brings back everyone the user passed on (recycle_passes in supabase/recycle.sql).
+  const recycle = async () => {
+    const { data, error } = await supabase.rpc('recycle_passes')
+    if (error) return toast(error.message)
+    if (!data) return toast('Ainda não passaste ninguém')
+    setLast(null)
+    toast(`${data} ${data === 1 ? 'perfil voltou' : 'perfis voltaram'} ao teu deck`)
+    reload()
+  }
+
+  return { deck, swipe, rewind, canRewind: !!last, superLeft, reload, recycle }
 }
 
 // Matches with their profile and last message, live.
