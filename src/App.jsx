@@ -52,23 +52,43 @@ const ERRORS = {
 // Cloudflare Turnstile captcha. Off until VITE_TURNSTILE_SITE_KEY is set and captcha is enabled in
 // Supabase (Authentication → Attack Protection) with the matching secret key.
 const TURNSTILE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
-function useCaptcha(box) {
+function useCaptcha(box, mode) {
   const [token, setToken] = useState('')
+  const [failed, setFailed] = useState(false)
   const widget = useRef(null)
+  // The form remounts when switching between login and sign-up, so render a fresh widget into the new box each time.
   useEffect(() => {
     if (!TURNSTILE_KEY) return
+    let cancelled = false
     const render = () => {
-      if (box.current && widget.current == null)
-        widget.current = window.turnstile.render(box.current, { sitekey: TURNSTILE_KEY, callback: setToken, 'expired-callback': () => setToken('') })
+      if (cancelled || !box.current || !window.turnstile) return
+      setToken('')
+      widget.current = window.turnstile.render(box.current, {
+        sitekey: TURNSTILE_KEY, language: 'pt', callback: (t) => { setFailed(false); setToken(t) },
+        'expired-callback': () => setToken(''), 'error-callback': () => setFailed(true),
+      })
     }
-    if (window.turnstile) return render()
-    const s = Object.assign(document.createElement('script'), { src: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', async: true })
-    s.onload = render
-    document.head.appendChild(s)
-  }, [box])
+    if (window.turnstile) render()
+    else {
+      let s = document.querySelector('script[data-turnstile]')
+      if (!s) {
+        s = Object.assign(document.createElement('script'), { src: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', async: true })
+        s.dataset.turnstile = '1'
+        document.head.appendChild(s)
+      }
+      s.addEventListener('load', render)
+      s.addEventListener('error', () => setFailed(true)) // blocked by an ad/content blocker or a network filter
+    }
+    const slow = setTimeout(() => { if (!box.current?.querySelector('[name=cf-turnstile-response]')) setFailed(true) }, 8000)
+    return () => {
+      cancelled = true
+      clearTimeout(slow)
+      if (widget.current != null) { window.turnstile?.remove(widget.current); widget.current = null }
+    }
+  }, [box, mode])
   // Tokens are single-use: get a fresh one after every attempt.
   const reset = () => { if (widget.current != null) { window.turnstile.reset(widget.current); setToken('') } }
-  return { enabled: !!TURNSTILE_KEY, token, reset }
+  return { enabled: !!TURNSTILE_KEY, token, reset, failed }
 }
 
 function Auth() {
@@ -81,7 +101,7 @@ function Auth() {
   const [legal, setLegal] = useState(null)
   const [accepted, setAccepted] = useState(false)
   const box = useRef(null)
-  const captcha = useCaptcha(box)
+  const captcha = useCaptcha(box, signUp)
 
   const switchMode = () => { setSignUp(!signUp); setMsg(''); setConfirm(''); setAccepted(false) }
   const submit = async (e) => {
@@ -140,6 +160,9 @@ function Auth() {
           </label>
         )}
         <div ref={box} className="captcha" />
+        {captcha.failed && !captcha.token && (
+          <p className="form-error">A verificação anti-robô não carregou. Desativa bloqueadores de anúncios ou abre o site no Safari/Chrome (não dentro do Instagram) e tenta outra vez.</p>
+        )}
         <button className="primary-button" disabled={busy || (signUp && !accepted)}>{busy ? '…' : signUp ? 'Criar conta' : 'Entrar'}</button>
         {msg && <p className="form-error">{msg}</p>}
         <p className="switch">
