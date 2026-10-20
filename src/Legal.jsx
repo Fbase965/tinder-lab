@@ -1,36 +1,37 @@
 import { Modal } from './App'
 import { Icon } from './icons'
 
-// Draft texts. Fill in CONTROLLER and have them reviewed before launch: this is not legal advice.
-const CONTROLLER = '[nome do responsável]'
-const CONTACT = '[email de contacto]'
+// Draft texts in the name of the website. Before a public launch, add a real contact (GDPR art. 13)
+// and have them reviewed: this is not legal advice.
+const SITE = 'faísca (tinder-lab.vercel.app)'
+const CONTACT = 'a equipa da faísca, através da própria aplicação'
 const UPDATED = '20 de outubro de 2026'
 
 const DOCS = {
   privacy: {
     title: 'Política de Privacidade',
     sections: [
-      ['Quem trata os teus dados', `${CONTROLLER} é o responsável pelo tratamento dos dados da faísca. Para qualquer pedido sobre os teus dados: ${CONTACT}.`],
-      ['Que dados guardamos', 'Username e password (encriptada); nome, data de nascimento, género, quem procuras, altura, profissão, bio, interesses e fotos; a tua localização arredondada a ~1 km, só se a partilhares; os teus gostos, matches, mensagens, bloqueios e denúncias.'],
-      ['Dados sensíveis', 'Quem procuras (homens, mulheres ou todos) pode revelar a tua orientação sexual. Só tratamos este dado com o teu consentimento explícito, dado ao criar a conta, e apenas para te mostrar perfis compatíveis.'],
-      ['Para que usamos', 'Para criar a tua conta, mostrar-te perfis compatíveis (o algoritmo usa interesses, idade, altura, distância e gostos), permitir matches e conversas, e manter a comunidade segura (bloqueios e denúncias). Não vendemos dados nem mostramos publicidade.'],
-      ['O que os outros veem', 'O teu perfil (nome, idade, fotos, profissão, altura, bio, interesses) e uma distância aproximada (ex.: “a menos de 10 km”). Nunca a tua data de nascimento, a tua posição ou o teu username. As mensagens só são visíveis para ti e para o teu match.'],
-      ['Menores', 'É preciso ter pelo menos 17 anos. Contas com menos de 18 anos só veem e são vistas por pessoas até aos 19 anos.'],
-      ['Onde ficam os dados', 'Base de dados e autenticação: Supabase. Fotos: Microsoft Azure (Alemanha). Site: Vercel. Estes fornecedores tratam os dados por nossa conta.'],
-      ['Durante quanto tempo', 'Enquanto a tua conta existir. Ao apagares a conta, perfil, fotos, matches e mensagens são apagados de imediato.'],
-      ['Os teus direitos', `Podes aceder, corrigir e apagar os teus dados (em Perfil → Apagar conta), retirar o consentimento, e pedir a portabilidade ou opor-te ao tratamento através de ${CONTACT}. Podes também apresentar queixa à CNPD (www.cnpd.pt).`],
+      ['Responsável pelo tratamento', `Os dados pessoais dos utilizadores são tratados pela ${SITE}. Qualquer pedido relativo a dados pessoais pode ser dirigido a ${CONTACT}.`],
+      ['Dados recolhidos', 'A faísca guarda o username e a password (encriptada); o nome, a data de nascimento, o género, quem o utilizador procura, a altura, a profissão, a bio, os interesses e as fotos; a localização arredondada a cerca de 1 km, apenas se o utilizador a partilhar; e os gostos, matches, mensagens, bloqueios e denúncias.'],
+      ['Dados sensíveis', 'A indicação de quem o utilizador procura (homens, mulheres ou todos) pode revelar a sua orientação sexual. A faísca só trata este dado com o consentimento explícito dado na criação da conta, e apenas para mostrar perfis compatíveis.'],
+      ['Finalidades', 'Os dados são usados para criar e manter a conta, sugerir perfis compatíveis (o algoritmo considera interesses, idade, altura, distância e gostos), permitir matches e conversas, e manter a comunidade segura através de bloqueios e denúncias. A faísca não vende dados nem mostra publicidade.'],
+      ['O que os outros utilizadores veem', 'O perfil (nome, idade, fotos, profissão, altura, bio e interesses) e uma distância aproximada, como “a menos de 10 km”. A data de nascimento, a posição exata e o username nunca são mostrados. As mensagens só são visíveis para os dois participantes da conversa.'],
+      ['Menores', 'A faísca exige uma idade mínima de 17 anos. Contas de utilizadores com menos de 18 anos só veem e só são vistas por pessoas até aos 19 anos.'],
+      ['Subcontratantes e localização dos dados', 'Base de dados e autenticação: Supabase. Fotos: Microsoft Azure (Alemanha). Alojamento do site: Vercel. Estes fornecedores tratam os dados por conta da faísca.'],
+      ['Conservação', 'Os dados são conservados enquanto a conta existir. Quando o utilizador apaga a conta, o perfil, as fotos, os matches e as mensagens são apagados de imediato.'],
+      ['Direitos dos utilizadores', `Os utilizadores podem aceder, corrigir e apagar os seus dados (em Perfil → Apagar conta), retirar o consentimento, pedir a portabilidade ou opor-se ao tratamento, contactando ${CONTACT}. Têm ainda o direito de apresentar queixa à CNPD (www.cnpd.pt).`],
     ],
   },
   terms: {
     title: 'Termos de Utilização',
     sections: [
-      ['Quem pode usar', 'Tens de ter pelo menos 17 anos e dar dados verdadeiros, incluindo a data de nascimento. Uma conta por pessoa.'],
-      ['Conduta', 'É proibido assédio, ameaças, discurso de ódio, conteúdo sexual explícito, spam, burlas, fazer-se passar por outra pessoa e usar fotos de terceiros. Contactar menores com intenção sexual é crime.'],
-      ['Fotos e conteúdo', 'Só podes carregar fotos tuas ou que tens direito a usar. Continuas dono do teu conteúdo; dás-nos permissão para o mostrar dentro da app.'],
-      ['Segurança', 'Usa Bloquear e Denunciar em qualquer conversa. Podemos suspender ou apagar contas que violem estes termos.'],
-      ['Encontros', 'Os encontros são da tua responsabilidade. Encontra-te em locais públicos e avisa alguém de confiança.'],
-      ['O serviço', 'A faísca é um projeto em fase de testes, fornecido tal como está, e pode mudar ou parar.'],
-      ['Contacto', `${CONTROLLER}, ${CONTACT}.`],
+      ['Aceitação', `Ao criar uma conta, o utilizador aceita estes termos e a Política de Privacidade da ${SITE}.`],
+      ['Quem pode usar', 'O utilizador tem de ter pelo menos 17 anos e fornecer dados verdadeiros, incluindo a data de nascimento. É permitida apenas uma conta por pessoa.'],
+      ['Conduta', 'É proibido assediar, ameaçar, publicar discurso de ódio ou conteúdo sexual explícito, enviar spam, burlar, fazer-se passar por outra pessoa ou usar fotos de terceiros. Contactar menores com intenção sexual é crime.'],
+      ['Fotos e conteúdo', 'O utilizador só pode carregar fotos suas ou que tenha direito a usar. O conteúdo continua a pertencer ao utilizador, que autoriza a faísca a mostrá-lo dentro da aplicação.'],
+      ['Segurança e moderação', 'Qualquer conversa pode ser bloqueada ou denunciada. A faísca pode suspender ou apagar contas que violem estes termos.'],
+      ['Encontros', 'Os encontros entre utilizadores são da responsabilidade de cada um. A faísca recomenda encontros em locais públicos e avisar alguém de confiança.'],
+      ['Serviço', 'A faísca é um projeto em fase de testes, fornecido tal como está, e pode ser alterado ou descontinuado.'],
     ],
   },
 }

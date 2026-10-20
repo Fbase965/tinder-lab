@@ -38,8 +38,9 @@ export default function App() {
 }
 
 // Supabase Auth needs an email, so the username maps to a placeholder address no mail is ever sent to.
-// Requires "Confirm email" OFF in Supabase Auth settings.
-const usernameEmail = (u) => `${u}@users.tinderlab.app`
+// The domain must be one nobody else can receive mail for: vercel.app DNS is Vercel's alone (no MX on it).
+// Requires "Confirm email" OFF in Supabase Auth settings. Changing it needs supabase/email-domain.sql.
+const usernameEmail = (u) => `${u}@users.tinder-lab.vercel.app`
 const ERRORS = {
   'Invalid login credentials': 'Username ou password errados.',
   'User already registered': 'Esse username já existe.',
