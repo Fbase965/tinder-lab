@@ -306,6 +306,15 @@ function Shell({ me, setMe }) {
       .subscribe()
     return () => supabase.removeChannel(ch)
   }, [me.id])
+  // While the app is on screen the server skips push for you (supabase/presence.sql); the banner above takes over.
+  useEffect(() => {
+    const beat = () => supabase.rpc('touch_presence', { p_visible: document.visibilityState === 'visible' }).then(() => {})
+    beat()
+    const t = setInterval(() => document.visibilityState === 'visible' && beat(), 30000)
+    document.addEventListener('visibilitychange', beat)
+    window.addEventListener('pagehide', beat)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', beat); window.removeEventListener('pagehide', beat) }
+  }, [])
   useEffect(() => {
     if (!banner) return
     navigator.vibrate?.(20)

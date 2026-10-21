@@ -210,7 +210,7 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
   const [showParts, setShowParts] = useState(false)
   const picked = useRef(null) // swipe after the sheet's exit animation, so its buttons don't vanish mid-animation
   const shared = sharedInterests(me, p)
-  useEffect(() => { supabase.rpc('record_view', { p_viewed: p.id }) }, [p.id]) // feeds "who viewed you" (faísca+)
+  useEffect(() => { supabase.rpc('record_view', { p_viewed: p.id }).then(() => {}) }, [p.id]) // .then sends it: queries are lazy // feeds "who viewed you" (faísca+)
   const [username, setUsername] = useState(null) // only matches can see it (match_username in supabase/username.sql)
   useEffect(() => {
     if (p.matched) supabase.rpc('match_username', { p_other: p.id }).then(({ data }) => setUsername(data))
