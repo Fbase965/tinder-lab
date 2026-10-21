@@ -117,7 +117,7 @@ export function Icon({ name, size = 22, filled = false }) {
 // Blue badge: verified email or phone (supabase/email.sql).
 export function Verified({ size = 20 }) {
   return (
-    <i className="verified" title="Verificado" role="img" aria-label="Verificado">
+    <i className="verified" data-tip="Verificado" role="img" aria-label="Verificado">
       <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
         <path d={BADGE} fill="currentColor" stroke="currentColor" />
         <path d="m8 12 2.5 2.5L16 9" fill="none" stroke="#fff" strokeWidth="2.2" />
@@ -129,7 +129,7 @@ export function Verified({ size = 20 }) {
 // Coral flame next to the name of everyone with active faísca+.
 export function PlusBadge({ size = 20 }) {
   return (
-    <i className="verified plus" title="faísca+" role="img" aria-label="faísca+">
+    <i className="verified plus" data-tip="faísca+" role="img" aria-label="faísca+">
       <Icon name="brand" size={size} filled />
     </i>
   )
@@ -144,7 +144,7 @@ const ROLE_ICONS = {
 }
 export function RoleBadge({ role, size = 20 }) {
   return (
-    <i className={`verified role-${role}`} title={ROLES[role]} role="img" aria-label={ROLES[role]}>
+    <i className={`verified role-${role}`} data-tip={ROLES[role]} role="img" aria-label={ROLES[role]}>
       <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round">{ROLE_ICONS[role]}</svg>
     </i>
   )

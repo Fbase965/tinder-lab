@@ -165,11 +165,13 @@ export function AdminPanel({ onClose, toast }) {
             <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'selected' : ''} onClick={() => setTab(id)}>{label}</button>
           ))}
         </div>
-        {tab === 'stats' && <AdminStats />}
-        {tab === 'plus' && <PlusAdmin toast={toast} />}
-        {tab === 'roles' && <RolesAdmin toast={toast} />}
-        {tab === 'reports' && <Reports />}
-        {tab === 'push' && <PushTester toast={toast} />}
+        <div className="admin-body">
+          {tab === 'stats' && <AdminStats />}
+          {tab === 'plus' && <PlusAdmin toast={toast} />}
+          {tab === 'roles' && <RolesAdmin toast={toast} />}
+          {tab === 'reports' && <Reports />}
+          {tab === 'push' && <PushTester toast={toast} />}
+        </div>
       </>}
     </Modal>
   )
@@ -309,7 +311,6 @@ function PushTester({ toast }) {
   }
   return (
     <div className="push-tester">
-      <span className="settings-label">ENVIAR NOTIFICAÇÃO</span>
       <textarea className="push-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={200} rows={2}
         placeholder="Mensagem (vazio = notificação de teste)" />
       <div className="choice-row push-target">

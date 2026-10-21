@@ -721,7 +721,6 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .admin-stats span { color: var(--muted); font-size: 12px; }
 .role-choice { grid-template-columns: repeat(3, 1fr); }
 .role-choice button { display: flex; align-items: center; justify-content: center; gap: 4px; }
-.role-choice button.selected .verified { color: #fff; }
 .verified.role-founder, .name-line .verified.role-founder { color: #e9a400; }
 .verified.role-cofounder, .name-line .verified.role-cofounder { color: #9b6bd6; }
 .verified.role-developer, .name-line .verified.role-developer { color: #1f2420; }
@@ -734,3 +733,22 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 
 .profile-stats > button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 18px; }
 .profile-stats > button:active { background: var(--soft); }
+/* badge name on hover */
+.verified[data-tip] { position: relative; }
+.verified[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; z-index: 80; padding: 5px 9px; border-radius: 8px; color: #fff; background: rgba(20, 27, 24, .92); font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0; line-height: 1.2; white-space: nowrap; pointer-events: none; transform: translateX(-50%); animation: rise .15s var(--ease-out); }
+
+/* admin panel: fixed height so tabs don't make it jump; only the body scrolls */
+.filter-modal.admin-panel { width: min(560px, 100%); height: min(720px, 88dvh); display: flex; flex-direction: column; overflow: hidden; }
+.admin-panel .modal-heading { margin-bottom: 18px; }
+.admin-tabs { flex: none; flex-wrap: wrap; overflow: visible; margin: 0 0 18px; }
+.admin-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px; padding: 2px 6px 12px; }
+.admin-body .settings-label { margin: 18px 0 8px; }
+.admin-body .admin-list { max-height: none; overflow: visible; }
+.admin-body .primary-button { margin-top: 4px; }
+.admin-body form { margin-bottom: 4px; }
+.admin-list .link.danger { flex: none; padding: 7px 12px; border: 1px solid #ffd6d4; border-radius: 999px; background: #fff5f4; font-size: 12px; text-decoration: none; cursor: pointer; }
+.push-tester { margin-bottom: 0; gap: 10px; }
+.push-row { align-items: stretch; }
+.push-row .primary-button { margin: 0; flex: none; height: 46px; padding: 0 22px; }
+.push-target button { font-size: 13px; }
+@media (min-width: 701px) { .admin-stats { grid-template-columns: repeat(3, 1fr); } }
