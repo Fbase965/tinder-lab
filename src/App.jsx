@@ -287,8 +287,35 @@ function Shell({ me, setMe }) {
 
   const navigate = (p) => { setPage(p); setChatWith(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
+  // In-app banner for a new message or match while you're elsewhere in the app (push covers the app being closed).
+  const [banner, setBanner] = useState(null) // { id, kind: 'message' | 'match', text, at }
+  const where = useRef({})
+  where.current = { ...where.current, page, chatWith }
+  useEffect(() => {
+    const ch = supabase.channel('in-app-banner')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, ({ new: m }) => {
+        const w = where.current
+        if (m.sender === me.id || (w.page === 'messages' && w.chatWith === m.sender)) return
+        setBanner({ id: m.sender, kind: 'message', text: m.body, at: Date.now() })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, ({ new: m }) => {
+        const other = m.a === me.id ? m.b : m.a
+        if (where.current.swiped === other) return // my own swipe made it: the big match screen shows instead
+        setBanner({ id: other, kind: 'match', at: Date.now() })
+      })
+      .subscribe()
+    return () => supabase.removeChannel(ch)
+  }, [me.id])
+  useEffect(() => {
+    if (!banner) return
+    navigator.vibrate?.(20)
+    const t = setTimeout(() => setBanner(null), 5000)
+    return () => clearTimeout(t)
+  }, [banner])
+
   // Swipe from anywhere (card, explore grid, details sheet) goes through here.
   const swipe = async (card, kind) => {
+    where.current.swiped = card.id
     const res = await deckApi.swipe(card, kind)
     if (res) plan.reload() // likes / Super Likes left
     if (res === 'match') { setMatched(card); matches.reload(); navigator.vibrate?.([20, 60, 30]) }
@@ -343,7 +370,7 @@ function Shell({ me, setMe }) {
           {page === 'profile' && (
             <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}
               matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast}
-              plan={plan} openPremium={openPremium} />
+              plan={plan} openPremium={openPremium} openSheet={setSheet} />
           )}
         </div>
       </section>
@@ -360,6 +387,8 @@ function Shell({ me, setMe }) {
       </nav>
 
       {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
+      {banner && <InAppBanner key={banner.at} banner={banner} person={matches.list?.find((x) => x.id === banner.id)}
+        onOpen={() => { setBanner(null); openChat({ id: banner.id }) }} />}
       {premiumOpen && <PremiumSheet plan={plan} onClose={() => setPremiumOpen(false)} toast={toast} />}
       {me.university == null && <UniversityPrompt me={me} setMe={setMe} toast={toast} />}
       <InstallPrompt />
@@ -412,6 +441,19 @@ export function Modal({ onClose, className, backdropClass = '', children }) {
         {typeof children === 'function' ? children(close) : children}
       </div>
     </div>
+  )
+}
+
+function InAppBanner({ banner, person, onOpen }) {
+  const match = banner.kind === 'match'
+  return (
+    <button className="in-app-banner" role="status" onClick={onOpen}>
+      <i className="avatar-wrap">{person ? <Avatar p={person} /> : <Icon name={match ? 'heart' : 'message'} />}</i>
+      <div>
+        <strong>{match ? `É um match${person ? ` com ${person.name}` : ''}!` : person?.name ?? 'Nova mensagem'}</strong>
+        <span>{match ? 'Diz olá 👋' : banner.text}</span>
+      </div>
+    </button>
   )
 }
 

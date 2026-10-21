@@ -8,6 +8,7 @@ import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
 import { UNIVERSITIES, OTHER, isListed } from './universities'
 import { isUniversityEmail } from './emailDomains'
+import { withVerified } from './data'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -24,7 +25,7 @@ const dbError = (e) => Object.entries(DB_ERRORS).find(([k]) => e.message.include
 // Latest birth date allowed today, as yyyy-mm-dd for <input type="date" max>.
 const maxBirthDate = () => { const d = new Date(); d.setFullYear(d.getFullYear() - MIN_AGE); return d.toISOString().slice(0, 10) }
 
-export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast, plan, openPremium }) {
+export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast, plan, openPremium, openSheet }) {
   const [editing, setEditing] = useState(false)
   const [privacy, setPrivacy] = useState(false)
   const [likes, setLikes] = useState(null)
@@ -33,6 +34,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
   const [username, setUsername] = useState(null)
   const [renaming, setRenaming] = useState(false)
   const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [likedOpen, setLikedOpen] = useState(false)
   const [myEmail, setMyEmail] = useState(undefined)
   useEffect(() => { supabase.rpc('my_email').then(({ data }) => setMyEmail(data?.[0] ?? null)) }, [])
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setUsername(data.session?.user.email?.split('@')[0] ?? null)) }, [])
@@ -93,6 +95,11 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <div><strong>Informações pessoais</strong><span>Nome, idade, universidade, fotos e bio</span></div>
               <Icon name="chevron" />
             </button>
+            <button onClick={() => setLikedOpen(true)}>
+              <i className="coral"><Icon name="heart" /></i>
+              <div><strong>Pessoas de quem gostaste</strong><span>Os teus likes e Super Likes</span></div>
+              <Icon name="chevron" />
+            </button>
             <button onClick={openFilters}>
               <i className="purple"><Icon name="sliders" /></i>
               <div><strong>Preferências de descoberta</strong><span>Idade, distância e altura</span></div>
@@ -136,6 +143,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
         {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
+        {likedOpen && <LikedModal onClose={() => setLikedOpen(false)} openSheet={openSheet} />}
         {verifyingEmail && <EmailModal current={myEmail} onClose={() => setVerifyingEmail(false)} toast={toast}
           onVerified={(e) => { setMyEmail(e); supabase.auth.refreshSession() /* re-reads my badges in App */ }} />}
         {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
@@ -527,6 +535,49 @@ function EmailModal({ current, onClose, onVerified, toast }) {
           <button className="primary-button" disabled={busy}>{busy ? 'Aguarda…' : sent ? 'Confirmar código' : 'Enviar código'}</button>
         </form>
       )}
+    </Modal>
+  )
+}
+
+// My likes, newest first (my own swipes are readable, supabase/schema.sql). Tap opens the profile.
+function LikedModal({ onClose, openSheet }) {
+  const [rows, setRows] = useState(null)
+  useEffect(() => {
+    (async () => {
+      const { data: s } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
+        .order('created_at', { ascending: false }).limit(100)
+      const ids = (s ?? []).map((x) => x.target)
+      const [{ data: p }, { data: m }] = ids.length
+        ? await Promise.all([supabase.from('profiles').select('*').in('id', ids), supabase.from('matches').select('a, b')])
+        : [{ data: [] }, { data: [] }]
+      const matched = new Set((m ?? []).flatMap((x) => [x.a, x.b]))
+      const people = await withVerified(p)
+      setRows((s ?? []).map((x) => {
+        const prof = people.find((y) => y.id === x.target)
+        return prof && { ...prof, super: x.super, liked_at: x.created_at, matched: matched.has(x.target) }
+      }).filter(Boolean))
+    })()
+  }, [])
+  return (
+    <Modal className="filter-modal" onClose={onClose}>
+      {(close) => <>
+        <div className="modal-heading">
+          <div><span className="kicker">LIKES</span><div className="modal-title">Gostaste de</div></div>
+          <button className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+        </div>
+        {rows === null && <p className="empty-note">A carregar…</p>}
+        {rows?.length === 0 && <p className="empty-note">Ainda não deste like a ninguém.</p>}
+        <div className="admin-list liked-list">
+          {rows?.map((p) => (
+            <button key={p.id} onClick={() => { close(); openSheet(p) }}>
+              <i className="avatar-wrap"><Avatar p={p} /></i>
+              <div><strong>{p.name}, {p.age}<Badges p={p} size={14} /></strong>
+                <span>{[p.matched && 'Match', p.super && 'Super Like', new Date(p.liked_at).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}</span></div>
+              <Icon name="chevron" size={18} />
+            </button>
+          ))}
+        </div>
+      </>}
     </Modal>
   )
 }
