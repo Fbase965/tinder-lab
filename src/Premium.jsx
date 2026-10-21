@@ -87,7 +87,7 @@ export function PremiumSheet({ plan, onClose, toast }) {
 
 // "Liked you" / "viewed you" for Explore. Free users only get a count from the server, so the
 // blurred tiles are decoration, not hidden data.
-export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey }) {
+export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey, fresh = 0 }) {
   const [rows, setRows] = useState(null)
   useEffect(() => {
     supabase.rpc('people_for_me', { p_kind: kind }).then(async ({ data }) => setRows(await withVerified(data)))
@@ -100,7 +100,7 @@ export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey }) 
   return (
     <section className="people-strip">
       <div className="section-row">
-        <div className="section-title">{title} {total > 0 && <span className="count-pill">{total}</span>}</div>
+        <div className="section-title">{title} {fresh > 0 && <span className="count-pill" aria-label={`${fresh} novos`}>{fresh}</span>}</div>
         {!plan.premium && total > 0 && <button onClick={openPremium}>Ver quem <Icon name="chevron" size={16} /></button>}
       </div>
       {total === 0 && <p className="empty-note">{empty}</p>}

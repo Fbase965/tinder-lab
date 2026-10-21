@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { Icon, Brand, Badges } from './icons'
-import { useDeck, useMatches, isUnread, completeness } from './data'
+import { useDeck, useMatches, isUnread, completeness, useExploreNews } from './data'
 import { Discover, ProfileSheet } from './Discover'
 import { Explore } from './Explore'
 import { Messages } from './Messages'
@@ -285,7 +285,12 @@ function Shell({ me, setMe }) {
   const unread = (matches.list ?? []).filter((m) => isUnread(me, m)).length
   const complete = completeness(me, hasLocation)
 
-  const navigate = (p) => { setPage(p); setChatWith(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const explore = useExploreNews(me)
+  const [exploreFresh, setExploreFresh] = useState({}) // what was new when Explore was opened, so its pills stay for the visit
+  const navigate = (p) => {
+    if (p === 'explore') { setExploreFresh(explore.news); explore.markSeen() }
+    setPage(p); setChatWith(null); window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // In-app banner for a new message or match while you're elsewhere in the app (push covers the app being closed).
   const [banner, setBanner] = useState(null) // { id, kind: 'message' | 'match', text, at }
@@ -344,6 +349,7 @@ function Shell({ me, setMe }) {
               <Icon name={item.icon} filled={page === item.id} />
               <span>{item.label}</span>
               {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
+              {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i>{explore.total}</i>}
               {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
             </button>
           ))}
@@ -372,7 +378,7 @@ function Shell({ me, setMe }) {
               openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')}
               boost={<BoostButton plan={plan} openPremium={openPremium} toast={toast} />} />
           )}
-          {page === 'explore' && <Explore deck={deckApi.deck} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} />}
+          {page === 'explore' && <Explore deck={deckApi.deck} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} fresh={exploreFresh} />}
           {page === 'messages' && (
             <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} openSheet={setSheet} />
           )}
@@ -390,6 +396,7 @@ function Shell({ me, setMe }) {
             <Icon name={item.icon} filled={page === item.id} />
             <span>{item.short ?? item.label}</span>
             {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
+              {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i>{explore.total}</i>}
             {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
           </button>
         ))}

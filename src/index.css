@@ -118,7 +118,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .conversation-heading { height: 102px; padding: 27px 25px 15px; display: flex; align-items: flex-start; justify-content: space-between; }
 .new-matches { padding: 8px 25px 22px; border-bottom: 1px solid var(--line); }.new-matches > span { display: block; margin-bottom: 12px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 .new-matches > div { display: flex; gap: 13px; }.new-matches button { width: 57px; padding: 0; border: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; background: transparent; font-size: 9px; cursor: pointer; }
-.new-matches i { width: 51px; height: 51px; padding: 2px; border: 2px solid var(--coral); border-radius: 50%; display: block; }.new-matches img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.new-matches i:not(.verified) { width: 51px; height: 51px; padding: 2px; border: 2px solid var(--coral); border-radius: 50%; display: block; }.new-matches img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .chat-list { padding: 10px; }.chat-row { position: relative; width: 100%; padding: 11px 12px; border: 0; border-radius: 14px; display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 10px; text-align: left; background: transparent; cursor: pointer; }
 .chat-row.active { background: #fff1f0; }.avatar-wrap { position: relative; width: 46px; height: 46px; display: block; }.avatar-wrap img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }.avatar-wrap b { position: absolute; right: 1px; bottom: 1px; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: var(--mint); }
 .chat-row > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }.chat-row strong { font-size: 12px; }.chat-row span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.chat-row small { align-self: start; margin-top: 3px; color: #a0a5a1; font-size: 8px; }
@@ -266,7 +266,7 @@ p { margin: 0; }
 .menu button + button { border-top: 1px solid var(--line); }
 .menu .danger { color: var(--coral); }
 .message-composer .send-button:disabled { opacity: .35; transform: scale(.9); cursor: default; }
-.new-matches i { overflow: hidden; }
+.new-matches i:not(.verified) { overflow: hidden; }
 
 /* forms: auth, onboarding, edit profile */
 .auth-page { min-height: 100vh; display: grid; grid-template-columns: 1fr minmax(320px, 440px); gap: 60px; align-items: center;
@@ -500,7 +500,7 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
   .new-matches > span { font-size: 10px; }
   .new-matches > div { overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 0 18px; }
   .new-matches button { flex: none; width: 64px; font-size: 11px; }
-  .new-matches i { width: 60px; height: 60px; }
+  .new-matches i:not(.verified) { width: 60px; height: 60px; }
   .chat-row { padding: 12px; grid-template-columns: 52px 1fr auto; }
   .chat-row .avatar-wrap { width: 52px; height: 52px; }
   .chat-row strong { font-size: 15px; } .chat-row span { font-size: 13px; } .chat-row small { font-size: 11px; }
@@ -624,7 +624,7 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
 .count-pill { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 6px; padding: 0 6px; border-radius: 11px; color: #fff; background: var(--coral); font-size: 11px; vertical-align: middle; }
 .strip { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; }
 .strip > button { flex: none; display: grid; justify-items: center; gap: 6px; width: 76px; border: 0; background: none; cursor: pointer; font-size: 12px; animation: rise-big .45s var(--ease-out) backwards; animation-delay: calc(var(--i) * 40ms); }
-.strip i { display: grid; place-items: center; width: 72px; height: 72px; overflow: hidden; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px var(--coral); }
+.strip i:not(.verified) { display: grid; place-items: center; width: 72px; height: 72px; overflow: hidden; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px var(--coral); }
 .strip i.super { box-shadow: 0 0 0 2px #4f8cff; }
 .strip i img, .strip i .placeholder { width: 100%; height: 100%; object-fit: cover; }
 .strip i.blurred { color: #fff; background: radial-gradient(circle at 35% 30%, hsl(var(--h) 70% 78%), hsl(calc(var(--h) + 40) 55% 45%)); filter: saturate(.9); box-shadow: 0 0 0 2px #e6c2c3; }

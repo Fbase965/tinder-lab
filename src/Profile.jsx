@@ -8,7 +8,7 @@ import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
 import { UNIVERSITIES, OTHER, isListed } from './universities'
 import { isUniversityEmail } from './emailDomains'
-import { withVerified } from './data'
+import { loadMyLikes } from './data'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -542,22 +542,7 @@ function EmailModal({ current, onClose, onVerified, toast }) {
 // My likes, newest first (my own swipes are readable, supabase/schema.sql). Tap opens the profile.
 function LikedModal({ onClose, openSheet }) {
   const [rows, setRows] = useState(null)
-  useEffect(() => {
-    (async () => {
-      const { data: s } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
-        .order('created_at', { ascending: false }).limit(100)
-      const ids = (s ?? []).map((x) => x.target)
-      const [{ data: p }, { data: m }] = ids.length
-        ? await Promise.all([supabase.from('profiles').select('*').in('id', ids), supabase.from('matches').select('a, b')])
-        : [{ data: [] }, { data: [] }]
-      const matched = new Set((m ?? []).flatMap((x) => [x.a, x.b]))
-      const people = await withVerified(p)
-      setRows((s ?? []).map((x) => {
-        const prof = people.find((y) => y.id === x.target)
-        return prof && { ...prof, super: x.super, liked_at: x.created_at, matched: matched.has(x.target) }
-      }).filter(Boolean))
-    })()
-  }, [])
+  useEffect(() => { loadMyLikes().then(setRows) }, [])
   return (
     <Modal className="filter-modal" onClose={onClose}>
       {(close) => <>

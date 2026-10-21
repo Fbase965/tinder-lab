@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { rank } from './algorithm'
 
@@ -139,4 +139,46 @@ export function dayLabel(iso) {
   if (sameDay(d, new Date())) return 'HOJE'
   if (sameDay(d, yesterday())) return 'ONTEM'
   return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }).toUpperCase()
+}
+
+// My likes, newest first, with profile, badges and whether it became a match (my own swipes are readable).
+export async function loadMyLikes(limit = 100) {
+  const { data: s } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
+    .order('created_at', { ascending: false }).limit(limit)
+  const ids = (s ?? []).map((x) => x.target)
+  if (!ids.length) return []
+  const [{ data: p }, { data: m }] = await Promise.all([supabase.from('profiles').select('*').in('id', ids), supabase.from('matches').select('a, b')])
+  const matched = new Set((m ?? []).flatMap((x) => [x.a, x.b]))
+  const people = await withVerified(p)
+  return s.map((x) => {
+    const prof = people.find((y) => y.id === x.target)
+    return prof && { ...prof, super: x.super, liked_at: x.created_at, matched: matched.has(x.target) }
+  }).filter(Boolean)
+}
+
+// "New since you last opened Explore" for likes and views: totals now minus totals when last seen.
+// shortcut: seen totals live in this browser (another phone shows them as new again); move to the DB if that annoys.
+const KINDS = ['likes', 'views']
+const seenKey = (uid, k) => `faisca-seen-${uid}-${k}`
+const readSeen = (uid) => Object.fromEntries(KINDS.map((k) => { try { return [k, +localStorage.getItem(seenKey(uid, k)) || 0] } catch { return [k, 0] } }))
+export function useExploreNews(me) {
+  const [totals, setTotals] = useState({ likes: 0, views: 0 })
+  const [seen, setSeen] = useState(() => readSeen(me.id))
+  const latest = useRef(totals)
+  useEffect(() => { latest.current = totals }, [totals])
+  const load = useCallback(() => Promise.all(KINDS.map((k) => supabase.rpc('people_for_me', { p_kind: k })))
+    .then((rs) => setTotals(Object.fromEntries(KINDS.map((k, i) => [k, rs[i].data?.[0]?.total ?? 0])))), [])
+  useEffect(() => {
+    load()
+    const onShow = () => document.visibilityState === 'visible' && load()
+    document.addEventListener('visibilitychange', onShow)
+    return () => document.removeEventListener('visibilitychange', onShow)
+  }, [load])
+  const markSeen = useCallback(() => {
+    setSeen(latest.current)
+    try { KINDS.forEach((k) => localStorage.setItem(seenKey(me.id, k), latest.current[k])) } catch { /* private mode: badge just comes back */ }
+  }, [me.id])
+  // Views expire after 30 days, so a total can drop below what was seen: never negative.
+  const news = Object.fromEntries(KINDS.map((k) => [k, Math.max(0, totals[k] - seen[k])]))
+  return { news, total: news.likes + news.views, markSeen }
 }

@@ -52,11 +52,12 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
   const onPointerMove = (e) => start.current && setDrag({ x: e.clientX - start.current.x, y: e.clientY - start.current.y })
   const onPointerUp = (e) => {
     if (!start.current) return
+    // The real distance from this event, not the drag state (it lags a render behind, so taps got lost).
+    const x = e.clientX - start.current.x, y = e.clientY - start.current.y
     start.current = null
-    const { x, y } = drag
     if (y < -120 && Math.abs(x) < 90) return choose('super')
     if (Math.abs(x) > 90) return choose(x > 0 ? 'like' : 'nope')
-    if (Math.abs(x) < 5 && Math.abs(y) < 5) { // tap: left half = previous photo, right half = next
+    if (Math.abs(x) < 10 && Math.abs(y) < 10) { // tap (fingers wobble a few px): left half = previous photo, right half = next
       const r = e.currentTarget.getBoundingClientRect()
       nextPhoto(e.clientX - r.left > r.width / 2 ? 1 : -1)
     }

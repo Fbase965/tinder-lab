@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon, Badges } from './icons'
 import { Avatar } from './App'
+import { loadMyLikes } from './data'
 import { matchPercent } from './algorithm'
 import { PeopleStrip } from './Premium'
 
-export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
+export function Explore({ deck, swipe, openSheet, plan, openPremium, fresh = {} }) {
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   if (!deck) return <p className="loading">A carregar…</p>
@@ -27,8 +28,9 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
           <input aria-label="Pesquisar" placeholder="Pesquisar interesses" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
       </div>
-      <PeopleStrip kind="likes" plan={plan} openPremium={openPremium} openSheet={openSheet} refreshKey={deck.length} />
-      <PeopleStrip kind="views" plan={plan} openPremium={openPremium} openSheet={openSheet} />
+      <PeopleStrip kind="likes" plan={plan} openPremium={openPremium} openSheet={openSheet} refreshKey={deck.length} fresh={fresh.likes} />
+      <PeopleStrip kind="views" plan={plan} openPremium={openPremium} openSheet={openSheet} fresh={fresh.views} />
+      <MyLikesStrip openSheet={openSheet} refreshKey={deck.length} />
       <div className="section-row">
         <div className="section-title">Perfis para ti</div>
         {list.length > 9 && (
@@ -61,6 +63,27 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
 }
 
 // Explore is faísca+. Free users see a blurred preview of profiles they already get in Discover.
+// People I liked, newest first (faísca+; Explore itself is faísca+ only).
+function MyLikesStrip({ openSheet, refreshKey }) {
+  const [rows, setRows] = useState(null)
+  useEffect(() => { loadMyLikes(30).then(setRows) }, [refreshKey])
+  if (!rows) return null
+  return (
+    <section className="people-strip">
+      <div className="section-row"><div className="section-title">Gostaste de</div></div>
+      {rows.length === 0 && <p className="empty-note">Quando gostares de alguém, aparece aqui.</p>}
+      <div className="strip">
+        {rows.map((p, i) => (
+          <button key={p.id} style={{ '--i': i }} onClick={() => openSheet(p)}>
+            <i className={p.super ? 'super' : ''}><Avatar p={p} /></i>
+            <span>{p.name}, {p.age}<Badges p={p} size={13} /></span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function ExploreLocked({ deck, openPremium }) {
   const preview = deck.slice(0, 6)
   return (
