@@ -16,7 +16,7 @@ npm run dev
 - New project: run `supabase/schema.sql` in the SQL Editor.
 - Turn off **Authentication → Email → Confirm email** (login is username + password).
 - Existing project: run only the migration files you haven't applied yet
-  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, `premium.sql`, `messages.sql`, `moderation.sql`, `phone.sql`, `email.sql`, `presence.sql`, `staff.sql`, `receipts.sql`, in that order).
+  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, `premium.sql`, `messages.sql`, `moderation.sql`, `phone.sql`, `email.sql`, `presence.sql`, `staff.sql`, `receipts.sql`, `likers.sql`, in that order).
 - `storage.sql` is only for the old Supabase photo bucket; new photos go to Azure.
 
 ## Photos (Azure Blob Storage)

@@ -141,20 +141,28 @@ export function dayLabel(iso) {
   return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }).toUpperCase()
 }
 
-// My likes, newest first, with profile, badges and whether it became a match (my own swipes are readable).
-export async function loadMyLikes(limit = 100) {
-  const { data: s } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
-    .order('created_at', { ascending: false }).limit(limit)
-  const ids = (s ?? []).map((x) => x.target)
-  if (!ids.length) return []
-  const [{ data: p }, { data: m }] = await Promise.all([supabase.from('profiles').select('*').in('id', ids), supabase.from('matches').select('a, b')])
+// rows: [{ id, super, at }] newest first -> profiles with badges and whether it's a match.
+async function withPeople(rows) {
+  if (!rows?.length) return []
+  const [{ data: p }, { data: m }] = await Promise.all([
+    supabase.from('profiles').select('*').in('id', rows.map((r) => r.id)), supabase.from('matches').select('a, b')])
   const matched = new Set((m ?? []).flatMap((x) => [x.a, x.b]))
   const people = await withVerified(p)
-  return s.map((x) => {
-    const prof = people.find((y) => y.id === x.target)
-    return prof && { ...prof, super: x.super, liked_at: x.created_at, matched: matched.has(x.target) }
+  return rows.map((r) => {
+    const prof = people.find((y) => y.id === r.id)
+    return prof && { ...prof, super: r.super, liked_at: r.at, matched: matched.has(r.id) }
   }).filter(Boolean)
 }
+
+// My likes (my own swipes are readable).
+export async function loadMyLikes(limit = 100) {
+  const { data } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
+    .order('created_at', { ascending: false }).limit(limit)
+  return withPeople((data ?? []).map((x) => ({ id: x.target, super: x.super, at: x.created_at })))
+}
+
+// Everyone who liked me (faísca+, supabase/likers.sql).
+export const loadLikers = () => supabase.rpc('my_likers').then(({ data }) => withPeople(data))
 
 // "New since you last opened Explore" for likes and views: totals now minus totals when last seen.
 // shortcut: seen totals live in this browser (another phone shows them as new again); move to the DB if that annoys.

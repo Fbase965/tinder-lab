@@ -384,7 +384,7 @@ function Shell({ me, setMe }) {
           )}
           {page === 'profile' && (
             <Profile me={me} setMe={setMe} complete={complete} hasLocation={hasLocation} setHasLocation={setHasLocation}
-              matchesCount={matches.list?.length ?? 0} openFilters={() => setFilterOpen(true)} toast={toast}
+              matches={matches.list} openFilters={() => setFilterOpen(true)} toast={toast}
               plan={plan} openPremium={openPremium} openSheet={setSheet} />
           )}
         </div>

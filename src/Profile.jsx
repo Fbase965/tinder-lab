@@ -8,7 +8,7 @@ import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
 import { UNIVERSITIES, OTHER, isListed } from './universities'
 import { isUniversityEmail } from './emailDomains'
-import { loadMyLikes } from './data'
+import { loadMyLikes, loadLikers } from './data'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -25,7 +25,7 @@ const dbError = (e) => Object.entries(DB_ERRORS).find(([k]) => e.message.include
 // Latest birth date allowed today, as yyyy-mm-dd for <input type="date" max>.
 const maxBirthDate = () => { const d = new Date(); d.setFullYear(d.getFullYear() - MIN_AGE); return d.toISOString().slice(0, 10) }
 
-export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matchesCount, openFilters, toast, plan, openPremium, openSheet }) {
+export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matches, openFilters, toast, plan, openPremium, openSheet }) {
   const [editing, setEditing] = useState(false)
   const [privacy, setPrivacy] = useState(false)
   const [likes, setLikes] = useState(null)
@@ -35,6 +35,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
   const [renaming, setRenaming] = useState(false)
   const [verifyingEmail, setVerifyingEmail] = useState(false)
   const [likedOpen, setLikedOpen] = useState(false)
+  const [list, setList] = useState(null) // 'likers' | 'matches' from the stats
   const [myEmail, setMyEmail] = useState(undefined)
   useEffect(() => { supabase.rpc('my_email').then(({ data }) => setMyEmail(data?.[0] ?? null)) }, [])
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setUsername(data.session?.user.email?.split('@')[0] ?? null)) }, [])
@@ -76,8 +77,10 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         <section className="settings-column stagger">
           <div className="profile-stats">
-            <div><strong>{likes ?? '–'}</strong><span>Gostos</span></div>
-            <div><strong>{matchesCount}</strong><span>Matches</span></div>
+            <button onClick={() => (plan.premium ? setList('likers') : openPremium())} aria-label="Ver quem gostou de ti">
+              <strong>{likes ?? '–'}</strong><span>Gostos{!plan.premium && ' 🔒'}</span>
+            </button>
+            <button onClick={() => setList('matches')} aria-label="Ver os teus matches"><strong>{matches?.length ?? 0}</strong><span>Matches</span></button>
             <div><strong>{complete}%</strong><span>Completo</span></div>
           </div>
           <button className={`premium-row ${plan.premium ? 'on' : ''}`} onClick={openPremium}>
@@ -143,7 +146,12 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
         {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
-        {likedOpen && <LikedModal onClose={() => setLikedOpen(false)} openSheet={openSheet} />}
+        {likedOpen && <PeopleModal kicker="LIKES" title="Gostaste de" load={loadMyLikes} empty="Ainda não deste like a ninguém."
+          onClose={() => setLikedOpen(false)} openSheet={openSheet} />}
+        {list === 'likers' && <PeopleModal kicker="GOSTOS" title="Gostam de ti" load={loadLikers} empty="Ainda ninguém gostou de ti."
+          onClose={() => setList(null)} openSheet={openSheet} />}
+        {list === 'matches' && <PeopleModal kicker="MATCHES" title="Os teus matches" empty="Ainda não tens matches."
+          load={async () => (matches ?? []).map((m) => ({ ...m, matched: true }))} onClose={() => setList(null)} openSheet={openSheet} />}
         {verifyingEmail && <EmailModal current={myEmail} onClose={() => setVerifyingEmail(false)} toast={toast}
           onVerified={(e) => { setMyEmail(e); supabase.auth.refreshSession() /* re-reads my badges in App */ }} />}
         {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
@@ -540,24 +548,26 @@ function EmailModal({ current, onClose, onVerified, toast }) {
 }
 
 // My likes, newest first (my own swipes are readable, supabase/schema.sql). Tap opens the profile.
-function LikedModal({ onClose, openSheet }) {
+// A list of people (my likes, who liked me, my matches); tap opens the profile.
+function PeopleModal({ kicker, title, load, empty, onClose, openSheet }) {
   const [rows, setRows] = useState(null)
-  useEffect(() => { loadMyLikes().then(setRows) }, [])
+  useEffect(() => { load().then(setRows) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const when = (iso) => iso && new Date(iso).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
   return (
     <Modal className="filter-modal" onClose={onClose}>
       {(close) => <>
         <div className="modal-heading">
-          <div><span className="kicker">LIKES</span><div className="modal-title">Gostaste de</div></div>
+          <div><span className="kicker">{kicker}</span><div className="modal-title">{title}</div></div>
           <button className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
         </div>
         {rows === null && <p className="empty-note">A carregar…</p>}
-        {rows?.length === 0 && <p className="empty-note">Ainda não deste like a ninguém.</p>}
+        {rows?.length === 0 && <p className="empty-note">{empty}</p>}
         <div className="admin-list liked-list">
           {rows?.map((p) => (
             <button key={p.id} onClick={() => { close(); openSheet(p) }}>
               <i className="avatar-wrap"><Avatar p={p} /></i>
               <div><strong>{p.name}, {p.age}<Badges p={p} size={14} /></strong>
-                <span>{[p.matched && 'Match', p.super && 'Super Like', new Date(p.liked_at).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}</span></div>
+                <span>{[p.matched && 'Match', p.super && 'Super Like', when(p.liked_at ?? p.matched_at)].filter(Boolean).join(' · ')}</span></div>
               <Icon name="chevron" size={18} />
             </button>
           ))}
