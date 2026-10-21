@@ -65,7 +65,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <span>{complete}% completo</span>
           </div>
           <div className="preview-content">
-            <div className="name-line dark"><span>{me.name}, {me.age}</span><Badges p={{ verified: plan.premium, real: me.real }} /></div>
+            <div className="name-line dark"><span>{me.name}, {me.age}</span><Badges p={{ verified: me.verified, plus: plan.premium }} /></div>
             {username && <span className="username-tag">@{username}</span>}
             <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}
@@ -113,8 +113,8 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <i className="mint"><Icon name="mail" /></i>
               <div><strong>Email</strong><span>{myEmail === undefined ? '…' : myEmail
                 ? `${myEmail.email} · verificado${myEmail.university ? ' · universidade' : ''}`
-                : 'Recupera a password · email da universidade dá o selo verde'}</span></div>
-              {myEmail?.university ? <Badges p={{ real: true }} /> : <Icon name="chevron" />}
+                : 'Ganha o selo de verificado e recupera a password'}</span></div>
+              {myEmail ? <Badges p={{ verified: true }} /> : <Icon name="chevron" />}
             </button>
             <NotificationsRow toast={toast} />
             {plan.isAdmin && (
@@ -467,7 +467,7 @@ const USERNAME_ERRORS = {
 }
 
 // change_username() in supabase/username.sql; the login email follows the username.
-// A real email next to the username login: password reset, and a university address earns the green badge.
+// A real email next to the username login: password reset and the blue verified badge.
 // api/email.js sends the code; confirm_email (supabase/email.sql) checks it.
 const EMAIL_ERRORS = {
   email_taken: 'Este email já está associado a outra conta.',
@@ -502,7 +502,7 @@ function EmailModal({ current, onClose, onVerified, toast }) {
           setBusy(false)
           if (error || !data) return setErr('Código errado ou expirado.')
           onVerified({ email: email.trim().toLowerCase(), university: uni })
-          toast(uni ? 'Email verificado. Ganhaste o selo verde de pessoa real!' : 'Email verificado. Já podes recuperar a password.')
+          toast('Email verificado. Ganhaste o selo de verificado!')
           close()
         }}>
           <div className="modal-heading">
@@ -522,9 +522,7 @@ function EmailModal({ current, onClose, onVerified, toast }) {
           )}
           <p className="hint">{sent
             ? <>Não chegou? Vê o spam ou <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>muda o email ou reenvia</button>.</>
-            : uni
-              ? 'Email da universidade: ao confirmar, ganhas o selo verde de pessoa real.'
-              : 'Usa o email da universidade para ganhares o selo verde. Qualquer email serve para recuperar a password. Ninguém vê o teu email.'}</p>
+            : 'Ao confirmar, ganhas o selo azul de verificado e podes recuperar a password. Ninguém vê o teu email.'}</p>
           {err && <p className="form-error">{err}</p>}
           <button className="primary-button" disabled={busy}>{busy ? 'Aguarda…' : sent ? 'Confirmar código' : 'Enviar código'}</button>
         </form>

@@ -26,12 +26,12 @@ export default function App() {
     supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => setMe(data))
   }, [session])
-  // "Pessoa real" badge (university email or phone, supabase/email.sql). A session refresh re-reads it.
-  const [real, setReal] = useState(false)
+  // Verified badge (confirmed email or phone, supabase/email.sql). A session refresh re-reads it.
+  const [verified, setVerified] = useState(false)
   useEffect(() => {
-    if (session) supabase.rpc('badges', { p_ids: [session.user.id] }).then(({ data }) => setReal(!!data?.[0]?.phone))
+    if (session) supabase.rpc('badges', { p_ids: [session.user.id] }).then(({ data }) => setVerified(!!data?.[0]?.phone))
   }, [session])
-  const meWithBadge = useMemo(() => me && { ...me, real }, [me, real])
+  const meWithBadge = useMemo(() => me && { ...me, verified }, [me, verified])
 
   if (!session) return <Auth />
   if (me === undefined) return <p className="loading">A carregar…</p>
@@ -314,7 +314,7 @@ function Shell({ me, setMe }) {
         </nav>
         <button className="side-profile" onClick={() => navigate('profile')}>
           <Avatar p={me} />
-          <div><strong>{me.name}, {me.age}<Badges p={{ verified: plan.premium, real: me.real }} size={15} /></strong><span>Ver o meu perfil</span></div>
+          <div><strong>{me.name}, {me.age}<Badges p={{ verified: me.verified, plus: plan.premium }} size={15} /></strong><span>Ver o meu perfil</span></div>
           <Icon name="chevron" size={18} />
         </button>
       </aside>

@@ -103,11 +103,11 @@ export function useMatches(me) {
   return { list, reload: load, markRead }
 }
 
-// Name badges: verified = active faísca+, real = phone confirmed by SMS. Both are private, so ask the server.
+// Name badges: verified = confirmed email or phone, plus = active faísca+. Both are private, so ask the server.
 const badgeMap = async (ids) => {
   if (!ids.length) return new Map()
   const { data } = await supabase.rpc('badges', { p_ids: ids })
-  return new Map((data ?? []).map((b) => [b.id, { verified: b.premium, real: b.phone }]))
+  return new Map((data ?? []).map((b) => [b.id, { verified: b.phone, plus: b.premium }]))
 }
 export async function withVerified(rows) {
   const badges = await badgeMap((rows ?? []).map((r) => r.id).filter(Boolean))

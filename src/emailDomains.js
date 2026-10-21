@@ -1,4 +1,4 @@
-// Email domains that count as a university address (green "pessoa real" badge). Subdomains count too
+// Email domains that count as a university address (shown as "universidade" on the profile). Subdomains count too
 // (student@fe.up.pt, x@isep.ipp.pt). Used by api/email.js, which is the check that matters.
 export const UNIVERSITY_DOMAINS = [
   'up.pt', 'ipp.pt', 'ucp.pt', 'ulusofona.pt', 'ulp.pt', 'upt.pt', 'ufp.edu.pt', 'ufp.pt', 'ismai.pt', 'umaia.pt',

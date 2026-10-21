@@ -114,11 +114,11 @@ end $$;
 revoke execute on function reset_password(text, text, text) from public;
 grant execute on function reset_password(text, text, text) to anon, authenticated;
 
--- Green badge: phone confirmed by SMS, or a verified university email.
+-- Blue verified badge ("phone" column, name kept for the app): phone confirmed by SMS, or any verified email.
 create or replace function badges(p_ids uuid[]) returns table (id uuid, premium boolean, phone boolean)
 language sql stable security definer set search_path = public as $$
   select u.id, is_premium(u.id),
-         u.phone_confirmed_at is not null or exists (select 1 from user_emails e where e.user_id = u.id and e.university)
+         u.phone_confirmed_at is not null or exists (select 1 from user_emails e where e.user_id = u.id)
   from auth.users u where u.id = any(p_ids)
 $$;
 

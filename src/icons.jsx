@@ -113,10 +113,10 @@ export function Icon({ name, size = 22, filled = false }) {
   )
 }
 
-// Blue badge next to the name of everyone with active faísca+.
+// Blue badge: verified email or phone (supabase/email.sql).
 export function Verified({ size = 20 }) {
   return (
-    <i className="verified" title="Verificado · faísca+" role="img" aria-label="Verificado">
+    <i className="verified" title="Verificado" role="img" aria-label="Verificado">
       <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
         <path d={BADGE} fill="currentColor" stroke="currentColor" />
         <path d="m8 12 2.5 2.5L16 9" fill="none" stroke="#fff" strokeWidth="2.2" />
@@ -125,22 +125,17 @@ export function Verified({ size = 20 }) {
   )
 }
 
-const SHIELD = 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'
-
-// Green shield: phone number confirmed by SMS (supabase/phone.sql).
-export function RealPerson({ size = 20 }) {
+// Coral flame next to the name of everyone with active faísca+.
+export function PlusBadge({ size = 20 }) {
   return (
-    <i className="verified real" title="Pessoa real · telemóvel verificado" role="img" aria-label="Pessoa real">
-      <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
-        <path d={SHIELD} fill="currentColor" stroke="currentColor" />
-        <path d="m9 12 2 2 4-4" fill="none" stroke="#fff" strokeWidth="2.2" />
-      </svg>
+    <i className="verified plus" title="faísca+" role="img" aria-label="faísca+">
+      <Icon name="brand" size={size} filled />
     </i>
   )
 }
 
-// Every badge a person has, next to their name. p: { verified, real }.
-export const Badges = ({ p, size }) => <>{p.verified && <Verified size={size} />}{p.real && <RealPerson size={size} />}</>
+// Every badge a person has, next to their name. p: { verified, plus }.
+export const Badges = ({ p, size }) => <>{p.verified && <Verified size={size} />}{p.plus && <PlusBadge size={size} />}</>
 
 export function Brand() {
   return (
