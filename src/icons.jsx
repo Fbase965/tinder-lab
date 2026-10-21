@@ -101,6 +101,7 @@ paths.star = <path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4
 paths.back = <path d="m15 18-6-6 6-6" />
 paths.more = <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>
 paths.plus = <path d="M12 5v14M5 12h14" />
+paths.phone = <><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M11 18h2" /></>
 paths.reply = <><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>
 
 export function Icon({ name, size = 22, filled = false }) {
@@ -123,6 +124,23 @@ export function Verified({ size = 20 }) {
     </i>
   )
 }
+
+const SHIELD = 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'
+
+// Green shield: phone number confirmed by SMS (supabase/phone.sql).
+export function RealPerson({ size = 20 }) {
+  return (
+    <i className="verified real" title="Pessoa real · telemóvel verificado" role="img" aria-label="Pessoa real">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
+        <path d={SHIELD} fill="currentColor" stroke="currentColor" />
+        <path d="m9 12 2 2 4-4" fill="none" stroke="#fff" strokeWidth="2.2" />
+      </svg>
+    </i>
+  )
+}
+
+// Every badge a person has, next to their name. p: { verified, real }.
+export const Badges = ({ p, size }) => <>{p.verified && <Verified size={size} />}{p.real && <RealPerson size={size} />}</>
 
 export function Brand() {
   return (

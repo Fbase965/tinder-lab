@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Verified } from './icons'
+import { Icon, Badges } from './icons'
 import { Avatar } from './App'
 import { isUnread, shortTime, dayLabel } from './data'
 
@@ -48,7 +48,7 @@ export function Messages({ me, matches, selected, onSelect, toast, openSheet }) 
               {fresh.map((m, i) => (
                 <button key={m.id} style={{ '--i': i }} onClick={() => onSelect(m.id)}>
                   <i><Avatar p={m} /></i>
-                  <span>{m.name}{m.verified && <Verified size={13} />}</span>
+                  <span>{m.name}<Badges p={m} size={13} /></span>
                 </button>
               ))}
             </div>
@@ -59,7 +59,7 @@ export function Messages({ me, matches, selected, onSelect, toast, openSheet }) 
             <button className={`chat-row ${selected === m.id ? 'active' : ''}`} key={m.id} style={{ '--i': i }} onClick={() => onSelect(m.id)}>
               <i className="avatar-wrap"><Avatar p={m} /></i>
               <div>
-                <strong>{m.name}{m.verified && <Verified size={15} />}</strong>
+                <strong>{m.name}<Badges p={m} size={15} /></strong>
                 <span>{m.last.sender === me.id && 'Tu: '}{m.last.body}</span>
               </div>
               <small>{shortTime(m.last.created_at)}</small>
@@ -162,7 +162,7 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
         <button className="icon-button back-button" onClick={onBack} aria-label="Voltar"><Icon name="back" /></button>
         <button className="chat-person" onClick={openProfile} aria-label={`Ver o perfil de ${other.name}`}>
           <i className="avatar-wrap"><Avatar p={other} /></i>
-          <div><strong>{other.name}{other.verified && <Verified size={15} />}</strong><span>{other.age} anos{other.university && ` · ${other.university}`}</span></div>
+          <div><strong>{other.name}<Badges p={other} size={15} /></strong><span>{other.age} anos{other.university && ` · ${other.university}`}</span></div>
         </button>
         <div className="menu-wrap">
           <button className="icon-button" aria-label="Mais opções" onClick={() => setMenu(!menu)}><Icon name="more" /></button>

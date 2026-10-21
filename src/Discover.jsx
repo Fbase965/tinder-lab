@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Icon, Verified } from './icons'
+import { Icon, Badges } from './icons'
 import { supabase } from './supabase'
 import { Avatar, Modal } from './App'
 import { matchPercent, sharedInterests, WEIGHTS } from './algorithm'
@@ -129,7 +129,7 @@ export function Discover({ me, deckApi, swipe, complete, paused, openFilters, op
                   {c.distance_km != null && (
                     <div className="card-location"><Icon name="location" size={14} /> {distanceText(c.distance_km)}</div>
                   )}
-                  <div className="name-line"><span>{c.name}, {c.age}</span>{c.verified && <Verified size={24} />}</div>
+                  <div className="name-line"><span>{c.name}, {c.age}</span><Badges p={c} size={24} /></div>
                   {(c.university || c.height_cm) && (
                     <div className="job">{[c.university, c.height_cm && `${c.height_cm} cm`].filter(Boolean).join(' · ')}</div>
                   )}
@@ -234,7 +234,7 @@ export function ProfileSheet({ me, p, onClose, onSwipe }) {
           <button className="icon-button sheet-close" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
         </div>
         <div className="preview-content">
-          <div className="name-line dark"><span>{p.name}, {p.age}</span>{p.verified && <Verified />}</div>
+          <div className="name-line dark"><span>{p.name}, {p.age}</span><Badges p={p} /></div>
           {username && <span className="username-tag">@{username}</span>}
           <p>{[p.university, p.height_cm && `${p.height_cm} cm`, distanceText(p.distance_km)].filter(Boolean).join(' · ')}</p>
           {p.score && (

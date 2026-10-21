@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Verified } from './icons'
+import { Icon, Badges } from './icons'
 import { Avatar, Modal } from './App'
 import { LegalModal } from './Legal'
 import { NotificationsRow } from './Install'
@@ -31,6 +31,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
   const [admin, setAdmin] = useState(false)
   const [username, setUsername] = useState(null)
   const [renaming, setRenaming] = useState(false)
+  const [verifyingPhone, setVerifyingPhone] = useState(false)
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setUsername(data.session?.user.email?.split('@')[0] ?? null)) }, [])
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <span>{complete}% completo</span>
           </div>
           <div className="preview-content">
-            <div className="name-line dark"><span>{me.name}, {me.age}</span>{plan.premium && <Verified />}</div>
+            <div className="name-line dark"><span>{me.name}, {me.age}</span><Badges p={{ verified: plan.premium, real: me.real }} /></div>
             {username && <span className="username-tag">@{username}</span>}
             <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}
@@ -96,7 +97,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             </button>
             <button onClick={() => setPrivacy(!privacy)} aria-expanded={privacy}>
               <i className="mint"><Icon name="shield" /></i>
-              <div><strong>Privacidade e segurança</strong><span>Localização e visibilidade</span></div>
+              <div><strong>Privacidade e segurança</strong><span>Localização e pessoas bloqueadas</span></div>
               <Icon name="chevron" />
             </button>
             {privacy && <PrivacyPanel uid={me.id} hasLocation={hasLocation} setHasLocation={setHasLocation} toast={toast} />}
@@ -105,11 +106,16 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <div><strong>Username</strong><span>{username ? `@${username} · usado para entrar` : '…'}</span></div>
               <Icon name="chevron" />
             </button>
+            <button onClick={() => !me.real && setVerifyingPhone(true)}>
+              <i className="mint"><Icon name="phone" /></i>
+              <div><strong>Verificar telemóvel</strong><span>{me.real ? 'Verificado · tens o selo de pessoa real' : 'Ganha o selo verde de pessoa real'}</span></div>
+              {me.real ? <Badges p={{ real: true }} /> : <Icon name="chevron" />}
+            </button>
             <NotificationsRow toast={toast} />
             {plan.isAdmin && (
               <button onClick={() => setAdmin(true)}>
                 <i className="purple"><Icon name="shield" /></i>
-                <div><strong>Administração</strong><span>Dar ou remover faísca+</span></div>
+                <div><strong>Administração</strong><span>faísca+, denúncias e notificações</span></div>
                 <Icon name="chevron" />
               </button>
             )}
@@ -125,6 +131,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
         {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
+        {verifyingPhone && <PhoneModal onClose={() => setVerifyingPhone(false)} toast={toast} />}
         {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
       </div>
     </div>
@@ -158,8 +165,41 @@ function PrivacyPanel({ uid, hasLocation, setHasLocation, toast }) {
         <button className="selected" onClick={share} disabled={busy}>{busy ? 'A obter…' : hasLocation ? 'Atualizar localização' : 'Partilhar localização'}</button>
         {hasLocation && <button onClick={remove}>Remover</button>}
       </div>
+      <BlockedList toast={toast} />
     </div>
   )
+}
+
+// People you blocked or reported. Unblocking a match brings the match back (supabase/moderation.sql).
+function BlockedList({ toast }) {
+  const [list, setList] = useState(null)
+  useEffect(() => {
+    supabase.from('blocks').select('blocked, reason').order('created_at', { ascending: false }).then(async ({ data }) => {
+      const ids = (data ?? []).map((b) => b.blocked)
+      const { data: p } = ids.length ? await supabase.from('profiles').select('id, name').in('id', ids) : { data: [] }
+      setList((data ?? []).map((b) => ({ ...b, name: p?.find((x) => x.id === b.blocked)?.name ?? '…' })))
+    })
+  }, [])
+  const unblock = async (b) => {
+    if (!confirm(`Desbloquear ${b.name}?${b.reason ? ' A tua denúncia vai ser retirada.' : ''}`)) return
+    const { data, error } = await supabase.rpc('unblock', { p_other: b.blocked })
+    if (error) return toast(error.message)
+    setList((xs) => xs.filter((x) => x.blocked !== b.blocked))
+    toast(data ? `${b.name} desbloqueado. O vosso match voltou.` : `${b.name} desbloqueado`)
+  }
+  if (!list) return null
+  return <>
+    <span className="settings-label">PESSOAS BLOQUEADAS</span>
+    {list.length === 0 && <p>Não bloqueaste ninguém.</p>}
+    <div className="admin-list">
+      {list.map((b) => (
+        <div key={b.blocked}>
+          <div><strong>{b.name}</strong><span>{b.reason ? 'Denunciado' : 'Bloqueado'}</span></div>
+          <button className="link" onClick={() => unblock(b)}>Desbloquear</button>
+        </div>
+      ))}
+    </div>
+  </>
 }
 
 export function PreferencesModal({ me, onClose, onSaved }) {
@@ -421,6 +461,64 @@ const USERNAME_ERRORS = {
 }
 
 // change_username() in supabase/username.sql; the login email follows the username.
+// SMS code through Supabase Auth (Phone provider on, PT numbers only). The number stays private:
+// other people only see the green badge (supabase/phone.sql). The session update re-renders me.real.
+const PHONE_ERRORS = {
+  phone_exists: 'Este número já está associado a outra conta.',
+  over_sms_send_rate_limit: 'Pediste demasiados códigos. Tenta daqui a uns minutos.',
+  otp_expired: 'Código errado ou expirado.',
+  phone_provider_disabled: 'A verificação por SMS ainda não está ativa.',
+  sms_send_failed: 'Não foi possível enviar o SMS. Confirma o número.',
+}
+const phoneError = (e) => PHONE_ERRORS[e.code] ?? e.message
+
+function PhoneModal({ onClose, toast }) {
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const full = `+351${phone.replace(/\D/g, '')}`
+  return (
+    <Modal className="filter-modal" onClose={onClose}>
+      {(close) => (
+        <form className="username-form" onSubmit={async (e) => {
+          e.preventDefault()
+          setBusy(true); setErr('')
+          const { error } = sent
+            ? await supabase.auth.verifyOtp({ phone: full, token: code.trim(), type: 'phone_change' })
+            : await supabase.auth.updateUser({ phone: full })
+          setBusy(false)
+          if (error) return setErr(phoneError(error))
+          if (!sent) return setSent(true)
+          toast('Telemóvel verificado. Ganhaste o selo de pessoa real!'); close()
+        }}>
+          <div className="modal-heading">
+            <div><span className="kicker">CONTA</span><div className="modal-title">Verificar telemóvel</div></div>
+            <button type="button" className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+          </div>
+          {sent ? (
+            <label className="field"><span>Código enviado para {full}</span>
+              <input value={code} onChange={(e) => { setCode(e.target.value); setErr('') }} required autoFocus
+                inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" />
+            </label>
+          ) : (
+            <label className="field"><span>Número de telemóvel (+351)</span>
+              <input value={phone} onChange={(e) => { setPhone(e.target.value); setErr('') }} required autoFocus
+                type="tel" inputMode="tel" autoComplete="tel-national" pattern="9[0-9 ]{8,11}" title="Número português começado por 9" placeholder="912 345 678" />
+            </label>
+          )}
+          <p className="hint">{sent
+            ? <>Não chegou? <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>Mudar número ou reenviar</button></>
+            : 'Enviamos um código por SMS. O teu número nunca é mostrado a ninguém: os outros só veem o selo verde de pessoa real.'}</p>
+          {err && <p className="form-error">{err}</p>}
+          <button className="primary-button" disabled={busy}>{busy ? 'Aguarda…' : sent ? 'Confirmar código' : 'Enviar código'}</button>
+        </form>
+      )}
+    </Modal>
+  )
+}
+
 function UsernameModal({ current, onClose, onChanged, toast }) {
   const [value, setValue] = useState(current ?? '')
   const [err, setErr] = useState('')

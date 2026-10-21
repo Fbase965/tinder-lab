@@ -77,15 +77,15 @@ export function useMatches(me) {
     const ids = (m ?? []).map((x) => (x.a === me.id ? x.b : x.a))
     if (!ids.length) return setList([])
     // shortcut: pulls recent messages across all matches to find each last one; move to an SQL view if chats get big
-    const [{ data: p }, { data: msgs }, { data: reads }, verified] = await Promise.all([
+    const [{ data: p }, { data: msgs }, { data: reads }, badges] = await Promise.all([
       supabase.from('profiles').select('*').in('id', ids),
       supabase.from('messages').select('a, b, sender, body, created_at').order('created_at', { ascending: false }).limit(500),
       supabase.from('chat_reads').select('other, read_at'),
-      verifiedSet(ids),
+      badgeMap(ids),
     ])
     setList(ids.map((id, i) => {
       const prof = p?.find((x) => x.id === id)
-      return prof && { ...prof, verified: verified.has(id), matched_at: m[i].created_at, read_at: reads?.find((r) => r.other === id)?.read_at, last: msgs?.find((x) => x.a === id || x.b === id) }
+      return prof && { ...prof, ...badges.get(id), matched_at: m[i].created_at, read_at: reads?.find((r) => r.other === id)?.read_at, last: msgs?.find((x) => x.a === id || x.b === id) }
     }).filter(Boolean))
   }, [me.id])
 
@@ -103,15 +103,15 @@ export function useMatches(me) {
   return { list, reload: load, markRead }
 }
 
-// Marks people with active faísca+ (verified badge). Premium status is private, so ask the server.
-const verifiedSet = async (ids) => {
-  if (!ids.length) return new Set()
-  const { data } = await supabase.rpc('verified_ids', { p_ids: ids })
-  return new Set(data ?? [])
+// Name badges: verified = active faísca+, real = phone confirmed by SMS. Both are private, so ask the server.
+const badgeMap = async (ids) => {
+  if (!ids.length) return new Map()
+  const { data } = await supabase.rpc('badges', { p_ids: ids })
+  return new Map((data ?? []).map((b) => [b.id, { verified: b.premium, real: b.phone }]))
 }
 export async function withVerified(rows) {
-  const ids = await verifiedSet((rows ?? []).map((r) => r.id).filter(Boolean))
-  return (rows ?? []).map((r) => ({ ...r, verified: ids.has(r.id) }))
+  const badges = await badgeMap((rows ?? []).map((r) => r.id).filter(Boolean))
+  return (rows ?? []).map((r) => ({ ...r, ...badges.get(r.id) }))
 }
 
 // New match never opened, or their last message arrived after I last opened the chat.

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Brand, Verified } from './icons'
+import { Icon, Brand, Badges } from './icons'
 import { useDeck, useMatches, isUnread, completeness } from './data'
 import { Discover, ProfileSheet } from './Discover'
 import { Explore } from './Explore'
@@ -26,6 +26,8 @@ export default function App() {
     supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => setMe(data))
   }, [session])
+  const real = !!session?.user.phone_confirmed_at // "pessoa real" badge: phone confirmed by SMS
+  const meWithBadge = useMemo(() => me && { ...me, real }, [me, real])
 
   if (!session) return <Auth />
   if (me === undefined) return <p className="loading">A carregar…</p>
@@ -37,7 +39,7 @@ export default function App() {
       <ProfileForm uid={session.user.id} onSaved={(p) => { markJustSignedUp(); setMe(p) }} />
     </div>
   )
-  return <Shell me={me} setMe={setMe} />
+  return <Shell me={meWithBadge} setMe={setMe} />
 }
 
 // Supabase Auth needs an email, so the username maps to a placeholder address no mail is ever sent to.
@@ -252,7 +254,7 @@ function Shell({ me, setMe }) {
         </nav>
         <button className="side-profile" onClick={() => navigate('profile')}>
           <Avatar p={me} />
-          <div><strong>{me.name}, {me.age}{plan.premium && <Verified size={15} />}</strong><span>Ver o meu perfil</span></div>
+          <div><strong>{me.name}, {me.age}<Badges p={{ verified: plan.premium, real: me.real }} size={15} /></strong><span>Ver o meu perfil</span></div>
           <Icon name="chevron" size={18} />
         </button>
       </aside>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Verified } from './icons'
+import { Icon, Badges } from './icons'
 import { Avatar, Modal } from './App'
 import { withVerified } from './data'
 
@@ -107,7 +107,7 @@ export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey }) 
           ? people.map((p, i) => (
             <button key={p.id} style={{ '--i': i }} onClick={() => openSheet({ ...p, swipeable: kind === 'likes' })}>
               <i className={p.super_likes_me ? 'super' : ''}><Avatar p={p} /></i>
-              <span>{p.name}, {p.age}{p.verified && <Verified size={13} />}</span>
+              <span>{p.name}, {p.age}<Badges p={p} size={13} /></span>
             </button>
           ))
           : Array.from({ length: Math.min(total, 8) }, (_, i) => (
@@ -179,6 +179,7 @@ export function AdminPanel({ onClose, toast }) {
           <button className="primary-button" disabled={busy}>Dar faísca+</button>
         </form>
         <PushTester toast={toast} />
+        <Reports />
         <span className="settings-label">COM FAÍSCA+ ({list?.length ?? '…'})</span>
         <div className="admin-list">
           {list?.map((u) => (
@@ -192,6 +193,26 @@ export function AdminPanel({ onClose, toast }) {
       </>}
     </Modal>
   )
+}
+
+// Reports = blocks with a reason (supabase/moderation.sql). Newest first.
+function Reports() {
+  const [rows, setRows] = useState(null)
+  useEffect(() => { supabase.rpc('admin_reports').then(({ data }) => setRows(data ?? [])) }, [])
+  return <>
+    <span className="settings-label">DENÚNCIAS ({rows?.length ?? '…'})</span>
+    <div className="admin-list">
+      {rows?.map((r) => (
+        <div key={`${r.reporter_username}-${r.reported_username}`}>
+          <div>
+            <strong>{r.reported_name} · @{r.reported_username}{r.reports_against > 1 && ` · ${r.reports_against} denúncias`}</strong>
+            <span>“{r.reason}” — por @{r.reporter_username}, {dateText(r.created_at)}</span>
+          </div>
+        </div>
+      ))}
+      {rows?.length === 0 && <p className="empty-note">Sem denúncias.</p>}
+    </div>
+  </>
 }
 
 // Sends a test push (supabase/push-test.sql) and shows what the last deliveries returned.
