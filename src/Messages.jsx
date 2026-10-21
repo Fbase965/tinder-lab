@@ -118,15 +118,32 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
     first.current = false
   }, [count])
 
+  // Shows the message at once (faded until the database confirms it), then swaps in the saved row.
   const send = async (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     const t = text.trim()
     if (!t) return
+    const tmp = { id: `tmp-${Date.now()}`, sender: me.id, body: t, reply_to: replyTo?.id ?? null, created_at: new Date().toISOString(), pending: true }
     setText(''); setReplyTo(null)
+    setMsgs((xs) => [...(xs ?? []), tmp])
     const { data, error } = await supabase.from('messages').insert({ a, b, body: t, ...(replyTo && { reply_to: replyTo.id }) }).select().single()
-    if (error) { setText(t); setReplyTo(replyTo); return toast(error.code === '23503' ? `${other.name} já não é um match.` : error.message) }
-    setMsgs((xs) => (xs ?? []).some((x) => x.id === data.id) ? xs : [...(xs ?? []), data])
+    if (error) {
+      setMsgs((xs) => xs.filter((x) => x.id !== tmp.id)); setText(t); setReplyTo(replyTo)
+      return toast(error.code === '23503' ? `${other.name} já não é um match.` : error.message)
+    }
+    // Realtime may have delivered the same row already: keep one copy, in the temp's place.
+    setMsgs((xs) => xs.filter((x) => x.id !== data.id).map((x) => (x.id === tmp.id ? data : x)))
   }
+  // Enter sends on a keyboard; on phones Enter is a new line and the button sends.
+  const onKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !matchMedia('(pointer: coarse)').matches) send(e)
+  }
+  useEffect(() => { // grow with the text, up to ~5 lines
+    const el = input.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [text])
 
   // One reaction per person per message; picking the same one again removes it.
   const react = async (m, emoji) => {
@@ -193,24 +210,46 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
           </Fragment>
         ))}
       </div>
-      {replyTo && (
-        <div className="reply-bar">
-          <Icon name="reply" size={16} />
-          <div><strong>{author(replyTo)}</strong><span>{replyTo.body}</span></div>
-          <button type="button" aria-label="Cancelar resposta" onClick={() => setReplyTo(null)}><Icon name="close" size={16} /></button>
+      <form className={`message-composer ${replyTo ? 'replying' : ''}`} onSubmit={send}>
+        {replyTo && (
+          <div className="reply-bar">
+            <div><strong>A responder a {replyTo.sender === me.id ? 'ti' : other.name}</strong><span>{replyTo.body}</span></div>
+            <button type="button" aria-label="Cancelar resposta" onClick={() => setReplyTo(null)}><Icon name="close" size={16} /></button>
+          </div>
+        )}
+        <div className="composer-row">
+          <textarea ref={input} rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey}
+            placeholder={`Mensagem para ${other.name}…`} maxLength={2000} aria-label="Mensagem" />
+          {/* pointerdown default would blur the field and drop the phone keyboard after each send */}
+          <button className="send-button" aria-label="Enviar" disabled={!text.trim()} onPointerDown={(e) => e.preventDefault()}>
+            <Icon name="send" size={18} filled />
+          </button>
         </div>
-      )}
-      <form className="message-composer" onSubmit={send}>
-        <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreve uma mensagem..." maxLength={2000} enterKeyHint="send" />
-        <button className="send-button" aria-label="Enviar" disabled={!text.trim()}><Icon name="send" size={18} filled /></button>
       </form>
     </section>
   )
 }
 
-// Tap a message for the reaction bar; double-tap to like it (by hand: phones don't reliably fire dblclick).
+const SWIPE_REPLY = 56 // px dragged right to reply
+
+// Tap a message for the reaction bar; double-tap to like it (by hand: phones don't reliably fire dblclick);
+// drag it right to reply, like WhatsApp.
 function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onReply, onJump }) {
   const reactions = [m.reaction_a, m.reaction_b].filter(Boolean)
+  const [dx, setDx] = useState(0)
+  const drag = useRef(null)
+  const touchStart = (e) => { const t = e.touches[0]; drag.current = { x: t.clientX, y: t.clientY, axis: null, hit: false } }
+  const touchMove = (e) => {
+    const d = drag.current
+    if (!d || m.pending) return
+    const t = e.touches[0], mx = t.clientX - d.x, my = t.clientY - d.y
+    if (!d.axis && Math.abs(mx) + Math.abs(my) > 8) d.axis = mx > 0 && Math.abs(mx) > Math.abs(my) ? 'x' : 'y'
+    if (d.axis !== 'x') return
+    const x = Math.min(mx, 90) * (mx > SWIPE_REPLY ? 0.6 : 1)
+    if (!d.hit && x >= SWIPE_REPLY) { d.hit = true; navigator.vibrate?.(10) }
+    setDx(x)
+  }
+  const touchEnd = () => { if (drag.current?.hit) onReply(m); drag.current = null; setDx(0) }
   const lastTap = useRef(0)
   const tap = () => {
     const double = Date.now() - lastTap.current < 300
@@ -220,7 +259,10 @@ function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onR
     else onToggle() // already liked: just close the bar the first tap opened
   }
   return (
-    <div className={`msg ${mine ? 'mine' : 'theirs'}`} id={`msg-${m.id}`} onClick={(e) => e.stopPropagation()}>
+    <div className={`msg ${mine ? 'mine' : 'theirs'} ${m.pending ? 'pending' : ''} ${dx ? 'dragging' : ''}`} id={`msg-${m.id}`}
+      style={{ '--dx': `${dx}px`, '--reply-o': Math.min(dx / SWIPE_REPLY, 1) }}
+      onClick={(e) => e.stopPropagation()} onTouchStart={touchStart} onTouchMove={touchMove} onTouchEnd={touchEnd} onTouchCancel={touchEnd}>
+      <i className="swipe-reply" aria-hidden="true"><Icon name="reply" size={18} /></i>
       {open && (
         <div className="msg-actions">
           {REACTIONS.map((r) => (
@@ -234,7 +276,7 @@ function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onR
           <strong>{author(quoted)}</strong> {quoted.body}
         </button>
       )}
-      <div className="bubble" role="button" tabIndex={0} onClick={tap}
+      <div className="bubble" role="button" tabIndex={0} onClick={() => !m.pending && tap()}
         onKeyDown={(e) => e.key === 'Enter' && onToggle()}>{m.body}</div>
       {reactions.length > 0 && (
         <button className="reactions" aria-label="Mudar reação" onClick={onToggle}>{reactions.join('')}</button>
