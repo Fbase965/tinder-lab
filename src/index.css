@@ -725,3 +725,9 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .verified.role-founder, .name-line .verified.role-founder { color: #e9a400; }
 .verified.role-cofounder, .name-line .verified.role-cofounder { color: #9b6bd6; }
 .verified.role-developer, .name-line .verified.role-developer { color: #1f2420; }
+/* time + read receipt at the end of each bubble (floats into the last line when there's room) */
+.bubble .meta { float: right; margin: 6px 0 -4px 10px; display: inline-flex; align-items: center; gap: 4px; color: #a1a5a2; font-size: 10px; line-height: 1; }
+.msg.mine .bubble .meta { color: rgba(255, 255, 255, .8); }
+.receipt { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .55); transition: background .3s; }
+.receipt.seen { background: #8fd3ff; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .7); }
+@media (pointer: coarse) { .bubble { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }

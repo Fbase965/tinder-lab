@@ -86,20 +86,25 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
   const [menu, setMenu] = useState(false)
   const [picked, setPicked] = useState(null) // message id whose reaction bar is open
   const [replyTo, setReplyTo] = useState(null)
+  const [theirRead, setTheirRead] = useState(null) // read receipt: when they last opened this chat
   const body = useRef(null)
   const input = useRef(null)
+  const channel = useRef(null)
 
   useEffect(() => {
     supabase.from('messages').select('*').eq('a', a).eq('b', b).order('created_at')
       .then(({ data }) => setMsgs(data ?? []))
+    supabase.rpc('their_read_at', { p_other: other.id }).then(({ data }) => data && setTheirRead(data))
     const ch = supabase.channel(`chat-${a}-${b}`)
+      .on('broadcast', { event: 'read' }, ({ payload }) => payload.by === other.id && setTheirRead(payload.at))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `a=eq.${a}` },
         ({ new: m }) => m.b === b && setMsgs((xs) => (xs ?? []).some((x) => x.id === m.id) ? xs : [...(xs ?? []), m]))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `a=eq.${a}` },
         ({ new: m }) => m.b === b && setMsgs((xs) => xs?.map((x) => (x.id === m.id ? { ...x, ...m } : x))))
       .subscribe()
+    channel.current = ch
     return () => supabase.removeChannel(ch)
-  }, [a, b])
+  }, [a, b, other.id])
   const first = useRef(true) // jump to the bottom on open, glide for new messages
   const count = msgs?.length // reactions update msgs too, but only new messages should scroll
   // Opening the chat, or their message arriving while it's on screen, clears the alert.
@@ -107,7 +112,11 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
   useEffect(() => {
     if (!msgs || !lastFromThem) return
     const mark = () => document.visibilityState === 'visible' &&
-      supabase.rpc('mark_read', { p_other: other.id }).then(({ data, error }) => !error && onRead(other.id, data))
+      supabase.rpc('mark_read', { p_other: other.id }).then(({ data, error }) => {
+        if (error) return
+        onRead(other.id, data)
+        channel.current?.send({ type: 'broadcast', event: 'read', payload: { by: me.id, at: data } }) // their circles turn blue
+      })
     mark()
     document.addEventListener('visibilitychange', mark)
     return () => document.removeEventListener('visibilitychange', mark)
@@ -206,7 +215,8 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
             )}
             <Message m={m} mine={m.sender === me.id} quoted={m.reply_to && msgs.find((x) => x.id === m.reply_to)}
               author={author} mySide={mySide} open={picked === m.id}
-              onToggle={() => setPicked(picked === m.id ? null : m.id)} onReact={react} onReply={reply} onJump={jumpTo} />
+              seen={!!theirRead && new Date(m.created_at) <= new Date(theirRead)}
+              onToggle={() => setPicked(picked === m.id ? null : m.id)} onOpen={() => setPicked(m.id)} onReact={react} onReply={reply} onJump={jumpTo} />
           </Fragment>
         ))}
       </div>
@@ -232,31 +242,43 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
 
 const SWIPE_REPLY = 56 // px dragged right to reply
 
-// Tap a message for the reaction bar; double-tap to like it (by hand: phones don't reliably fire dblclick);
-// drag it right to reply, like WhatsApp.
-function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onReply, onJump }) {
+const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+const COARSE = matchMedia('(pointer: coarse)').matches // touch screen: long-press opens reactions, a tap doesn't
+const LONG_PRESS = 420 // ms
+
+// Phones: press and hold for reactions, drag right to reply, double-tap to like (by hand: no reliable dblclick).
+// Mouse: click for reactions. Mine end with a circle: grey sent, light blue once they've read it.
+function Message({ m, mine, seen, quoted, author, mySide, open, onToggle, onOpen, onReact, onReply, onJump }) {
   const reactions = [m.reaction_a, m.reaction_b].filter(Boolean)
   const [dx, setDx] = useState(0)
   const drag = useRef(null)
-  const touchStart = (e) => { const t = e.touches[0]; drag.current = { x: t.clientX, y: t.clientY, axis: null, hit: false } }
+  const press = useRef(null)
+  const longFired = useRef(false)
+  const touchStart = (e) => {
+    const t = e.touches[0]
+    drag.current = { x: t.clientX, y: t.clientY, axis: null, hit: false }
+    clearTimeout(press.current)
+    if (!m.pending) press.current = setTimeout(() => { longFired.current = true; navigator.vibrate?.(15); onOpen() }, LONG_PRESS)
+  }
   const touchMove = (e) => {
     const d = drag.current
     if (!d || m.pending) return
     const t = e.touches[0], mx = t.clientX - d.x, my = t.clientY - d.y
+    if (Math.abs(mx) + Math.abs(my) > 8) clearTimeout(press.current)
     if (!d.axis && Math.abs(mx) + Math.abs(my) > 8) d.axis = mx > 0 && Math.abs(mx) > Math.abs(my) ? 'x' : 'y'
     if (d.axis !== 'x') return
     const x = Math.min(mx, 90) * (mx > SWIPE_REPLY ? 0.6 : 1)
     if (!d.hit && x >= SWIPE_REPLY) { d.hit = true; navigator.vibrate?.(10) }
     setDx(x)
   }
-  const touchEnd = () => { if (drag.current?.hit) onReply(m); drag.current = null; setDx(0) }
+  const touchEnd = () => { clearTimeout(press.current); if (drag.current?.hit) onReply(m); drag.current = null; setDx(0) }
   const lastTap = useRef(0)
   const tap = () => {
+    if (longFired.current) { longFired.current = false; return } // the click that ends a long press
     const double = Date.now() - lastTap.current < 300
     lastTap.current = double ? 0 : Date.now()
-    if (!double) onToggle()
-    else if (m[mySide] !== '❤️') onReact(m, '❤️')
-    else onToggle() // already liked: just close the bar the first tap opened
+    if (double) { if (m[mySide] !== '❤️') onReact(m, '❤️'); else if (!COARSE) onToggle() }
+    else if (!COARSE) onToggle()
   }
   return (
     <div className={`msg ${mine ? 'mine' : 'theirs'} ${m.pending ? 'pending' : ''} ${dx ? 'dragging' : ''}`} id={`msg-${m.id}`}
@@ -269,6 +291,7 @@ function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onR
             <button key={r} className={m[mySide] === r ? 'on' : ''} aria-label={`Reagir com ${r}`} onClick={() => onReact(m, r)}>{r}</button>
           ))}
           <button aria-label="Responder" onClick={() => onReply(m)}><Icon name="reply" size={18} /></button>
+          <button aria-label="Copiar" onClick={() => { navigator.clipboard?.writeText(m.body); onToggle() }}><Icon name="copy" size={17} /></button>
         </div>
       )}
       {quoted && (
@@ -277,7 +300,13 @@ function Message({ m, mine, quoted, author, mySide, open, onToggle, onReact, onR
         </button>
       )}
       <div className="bubble" role="button" tabIndex={0} onClick={() => !m.pending && tap()}
-        onKeyDown={(e) => e.key === 'Enter' && onToggle()}>{m.body}</div>
+        onKeyDown={(e) => e.key === 'Enter' && onToggle()} onContextMenu={(e) => COARSE && e.preventDefault()}>
+        {m.body}
+        <span className="meta">
+          {hhmm(m.created_at)}
+          {mine && <i className={`receipt ${seen ? 'seen' : ''}`} title={m.pending ? 'A enviar' : seen ? 'Lida' : 'Enviada'} />}
+        </span>
+      </div>
       {reactions.length > 0 && (
         <button className="reactions" aria-label="Mudar reação" onClick={onToggle}>{reactions.join('')}</button>
       )}
