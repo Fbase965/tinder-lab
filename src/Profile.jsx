@@ -95,10 +95,10 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <div><strong>Informações pessoais</strong><span>Nome, idade, universidade, fotos e bio</span></div>
               <Icon name="chevron" />
             </button>
-            <button onClick={() => setLikedOpen(true)}>
+            <button onClick={() => (plan.premium ? setLikedOpen(true) : openPremium())}>
               <i className="coral"><Icon name="heart" /></i>
-              <div><strong>Pessoas de quem gostaste</strong><span>Os teus likes e Super Likes</span></div>
-              <Icon name="chevron" />
+              <div><strong>Pessoas de quem gostaste</strong><span>{plan.premium ? 'Os teus likes e Super Likes' : 'Exclusivo faísca+'}</span></div>
+              {plan.premium ? <Icon name="chevron" /> : <Icon name="lock" size={18} />}
             </button>
             <button onClick={openFilters}>
               <i className="purple"><Icon name="sliders" /></i>

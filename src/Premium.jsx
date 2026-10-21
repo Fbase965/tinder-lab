@@ -27,6 +27,8 @@ export function usePlan() {
 const FEATURES = [
   ['heart', 'Vê quem gostou de ti', 'Dá match na hora, sem esperar que apareçam no deck.'],
   ['eye', 'Vê quem visitou o teu perfil', 'Quem abriu o teu perfil nos últimos 30 dias.'],
+  ['message', 'Vê de quem gostaste', 'A lista dos teus likes e Super Likes, para não perderes ninguém.'],
+  ['brand', 'Chama faísca+ ao lado do nome', 'Toda a gente vê que és faísca+.'],
   ['infinity', 'Likes ilimitados', 'Sem o limite de 50 por dia.'],
   ['star', '5 Super Likes por dia', 'Em vez de 1.'],
   ['bolt', 'Boost diário', 'Apareces primeiro a toda a gente durante 30 minutos.'],
