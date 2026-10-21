@@ -56,7 +56,9 @@ begin
   delete from email_sends where at < now() - interval '1 day';
   return code;
 end $$;
-revoke execute on function email_issue_code(text, uuid, text, text, boolean) from public, anon, authenticated;
+-- api/email.js connects with the publishable key (anon); the secret is what guards it.
+revoke execute on function email_issue_code(text, uuid, text, text, boolean) from public, authenticated;
+grant execute on function email_issue_code(text, uuid, text, text, boolean) to anon;
 
 -- Called by api/email.js only (secret): where to send a reset code for this username, if anywhere.
 create or replace function email_reset_target(p_secret text, p_username text) returns table (user_id uuid, email text)
@@ -65,7 +67,8 @@ begin
   if p_secret is distinct from (select value from app_secrets where key = 'email_secret') then raise exception 'forbidden'; end if;
   return query select e.user_id, e.email from user_emails e where e.user_id = email_user_by_username(p_username);
 end $$;
-revoke execute on function email_reset_target(text, text) from public, anon, authenticated;
+revoke execute on function email_reset_target(text, text) from public, authenticated;
+grant execute on function email_reset_target(text, text) to anon;
 
 -- Checks a code: 15 minutes, 5 tries. Returns the row on success (and deletes it). A wrong try is counted, not raised,
 -- so the attempt counter survives.
