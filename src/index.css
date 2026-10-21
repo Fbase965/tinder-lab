@@ -752,3 +752,8 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .push-row .primary-button { margin: 0; flex: none; height: 46px; padding: 0 22px; }
 .push-target button { font-size: 13px; }
 @media (min-width: 701px) { .admin-stats { grid-template-columns: repeat(3, 1fr); } }
+
+/* sidebar card: name and badges on one line, left aligned */
+.side-profile { text-align: left; }
+.side-profile strong { display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; }
+.side-profile strong .verified { margin-left: 0; flex: none; }

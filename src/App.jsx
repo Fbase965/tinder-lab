@@ -356,7 +356,7 @@ function Shell({ me, setMe }) {
         </nav>
         <button className="side-profile" onClick={() => navigate('profile')}>
           <Avatar p={me} />
-          <div><strong>{me.name}, {me.age}<Badges p={{ ...me, plus: plan.premium }} size={15} /></strong><span>Ver o meu perfil</span></div>
+          <div><strong>{me.name}, {me.age}<Badges p={{ ...me, plus: plan.premium }} size={14} /></strong><span>Ver o meu perfil</span></div>
           <Icon name="chevron" size={18} />
         </button>
       </aside>
