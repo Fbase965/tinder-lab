@@ -163,7 +163,7 @@ function Chat({ me, other, onRead, onBack, onGone, toast, openProfile }) {
     const { error } = await supabase.from('messages').update({ [mySide]: next }).eq('id', m.id)
     if (error) { swap(m[mySide]); toast(error.message) }
   }
-  const reply = (m) => { setPicked(null); setReplyTo(m); input.current?.focus() }
+  const reply = (m) => { setPicked(null); setReplyTo(m); input.current?.focus({ preventScroll: true }) }
   const author = (m) => (m.sender === me.id ? 'Tu' : other.name)
   const jumpTo = (id) => document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
@@ -271,7 +271,15 @@ function Message({ m, mine, seen, quoted, author, mySide, open, onToggle, onOpen
     if (!d.hit && x >= SWIPE_REPLY) { d.hit = true; navigator.vibrate?.(10) }
     setDx(x)
   }
-  const touchEnd = () => { clearTimeout(press.current); if (drag.current?.hit) onReply(m); drag.current = null; setDx(0) }
+  const touchEnd = (e) => {
+    clearTimeout(press.current)
+    if (drag.current?.hit) {
+      // Cancel the click the phone fires next: focusing the bubble would steal focus from the composer and drop the keyboard.
+      if (e.cancelable) e.preventDefault()
+      onReply(m) // focuses the composer inside this touch, so iOS opens the keyboard
+    }
+    drag.current = null; setDx(0)
+  }
   const lastTap = useRef(0)
   const tap = () => {
     if (longFired.current) { longFired.current = false; return } // the click that ends a long press
