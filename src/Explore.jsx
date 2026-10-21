@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Icon } from './icons'
+import { Icon, Verified } from './icons'
 import { Avatar } from './App'
 import { matchPercent } from './algorithm'
 import { PeopleStrip } from './Premium'
@@ -46,7 +46,7 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium }) {
               <Icon name="heart" size={18} filled />
             </button>
             <div>
-              <strong>{c.name}, {c.age}</strong>
+              <strong>{c.name}, {c.age}{c.verified && <Verified size={15} />}</strong>
               <span>
                 {c.distance_km != null && <><Icon name="location" size={12} /> {`< ${c.distance_km} km`}</>}
                 {c.distance_km != null && c.university && ' · '}

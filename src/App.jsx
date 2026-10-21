@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Brand } from './icons'
-import { useDeck, useMatches, needsReply, completeness } from './data'
+import { Icon, Brand, Verified } from './icons'
+import { useDeck, useMatches, isUnread, completeness } from './data'
 import { Discover, ProfileSheet } from './Discover'
 import { Explore } from './Explore'
 import { Messages } from './Messages'
@@ -220,7 +220,7 @@ function Shell({ me, setMe }) {
     return () => ts.forEach(clearTimeout)
   }, [deepPremium, toast, reloadPlan])
   const matches = useMatches(me)
-  const unread = (matches.list ?? []).filter((m) => needsReply(me, m)).length
+  const unread = (matches.list ?? []).filter((m) => isUnread(me, m)).length
   const complete = completeness(me, hasLocation)
 
   const navigate = (p) => { setPage(p); setChatWith(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -252,7 +252,7 @@ function Shell({ me, setMe }) {
         </nav>
         <button className="side-profile" onClick={() => navigate('profile')}>
           <Avatar p={me} />
-          <div><strong>{me.name}, {me.age}</strong><span>Ver o meu perfil</span></div>
+          <div><strong>{me.name}, {me.age}{plan.premium && <Verified size={15} />}</strong><span>Ver o meu perfil</span></div>
           <Icon name="chevron" size={18} />
         </button>
       </aside>

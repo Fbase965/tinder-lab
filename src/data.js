@@ -11,9 +11,9 @@ export function useDeck(me, toast, plan, onLimit) {
   const [superLeft, setSuperLeft] = useState(1)
   useEffect(() => { if (plan.loaded) setSuperLeft(plan.superLeft) }, [plan.loaded, plan.superLeft])
 
-  const reload = useCallback(() => supabase.rpc('deck').then(({ data, error }) => {
+  const reload = useCallback(() => supabase.rpc('deck').then(async ({ data, error }) => {
     if (error) toast(error.message)
-    setDeck(error ? [] : rank(me, data))
+    setDeck(error ? [] : rank(me, await withVerified(data)))
   }), [me, toast])
 
   useEffect(() => { reload() }, [reload, plan.premium]) // premium reveals who liked you in the deck
@@ -77,13 +77,15 @@ export function useMatches(me) {
     const ids = (m ?? []).map((x) => (x.a === me.id ? x.b : x.a))
     if (!ids.length) return setList([])
     // shortcut: pulls recent messages across all matches to find each last one; move to an SQL view if chats get big
-    const [{ data: p }, { data: msgs }] = await Promise.all([
+    const [{ data: p }, { data: msgs }, { data: reads }, verified] = await Promise.all([
       supabase.from('profiles').select('*').in('id', ids),
       supabase.from('messages').select('a, b, sender, body, created_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('chat_reads').select('other, read_at'),
+      verifiedSet(ids),
     ])
     setList(ids.map((id, i) => {
       const prof = p?.find((x) => x.id === id)
-      return prof && { ...prof, matched_at: m[i].created_at, last: msgs?.find((x) => x.a === id || x.b === id) }
+      return prof && { ...prof, verified: verified.has(id), matched_at: m[i].created_at, read_at: reads?.find((r) => r.other === id)?.read_at, last: msgs?.find((x) => x.a === id || x.b === id) }
     }).filter(Boolean))
   }, [me.id])
 
@@ -96,11 +98,26 @@ export function useMatches(me) {
     return () => supabase.removeChannel(ch)
   }, [load])
 
-  return { list, reload: load }
+  // mark_read returns the server time it stored, so the alert compares server clocks only.
+  const markRead = useCallback((id, at) => setList((xs) => xs?.map((m) => (m.id === id ? { ...m, read_at: at } : m))), [])
+  return { list, reload: load, markRead }
 }
 
-// Matches nobody has written to yet, or where the last word is theirs.
-export const needsReply = (me, m) => !m.last || m.last.sender !== me.id
+// Marks people with active faísca+ (verified badge). Premium status is private, so ask the server.
+const verifiedSet = async (ids) => {
+  if (!ids.length) return new Set()
+  const { data } = await supabase.rpc('verified_ids', { p_ids: ids })
+  return new Set(data ?? [])
+}
+export async function withVerified(rows) {
+  const ids = await verifiedSet((rows ?? []).map((r) => r.id).filter(Boolean))
+  return (rows ?? []).map((r) => ({ ...r, verified: ids.has(r.id) }))
+}
+
+// New match never opened, or their last message arrived after I last opened the chat.
+export const isUnread = (me, m) => m.last
+  ? m.last.sender !== me.id && !(m.read_at && new Date(m.read_at) >= new Date(m.last.created_at))
+  : !m.read_at
 
 export function completeness(p, hasLocation) {
   const checks = [p.photos?.length >= 3, !!p.bio, !!p.university, p.interests?.length >= 3, !!p.height_cm, hasLocation]

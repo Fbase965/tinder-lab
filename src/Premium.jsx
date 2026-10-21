@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon } from './icons'
+import { Icon, Verified } from './icons'
 import { Avatar, Modal } from './App'
+import { withVerified } from './data'
 
 const PRICE = import.meta.env.VITE_PREMIUM_PRICE // e.g. "4,99 €/mês"; set on Vercel with the Stripe price
 
@@ -87,7 +88,7 @@ export function PremiumSheet({ plan, onClose, toast }) {
 export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey }) {
   const [rows, setRows] = useState(null)
   useEffect(() => {
-    supabase.rpc('people_for_me', { p_kind: kind }).then(({ data }) => setRows(data ?? []))
+    supabase.rpc('people_for_me', { p_kind: kind }).then(async ({ data }) => setRows(await withVerified(data)))
   }, [kind, plan.premium, refreshKey])
   if (!rows) return null
   const total = rows[0]?.total ?? 0
@@ -106,7 +107,7 @@ export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey }) 
           ? people.map((p, i) => (
             <button key={p.id} style={{ '--i': i }} onClick={() => openSheet({ ...p, swipeable: kind === 'likes' })}>
               <i className={p.super_likes_me ? 'super' : ''}><Avatar p={p} /></i>
-              <span>{p.name}, {p.age}</span>
+              <span>{p.name}, {p.age}{p.verified && <Verified size={13} />}</span>
             </button>
           ))
           : Array.from({ length: Math.min(total, 8) }, (_, i) => (

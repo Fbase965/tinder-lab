@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon } from './icons'
+import { Icon, Verified } from './icons'
 import { Avatar, Modal } from './App'
 import { LegalModal } from './Legal'
 import { NotificationsRow } from './Install'
@@ -61,7 +61,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <span>{complete}% completo</span>
           </div>
           <div className="preview-content">
-            <div className="name-line dark"><span>{me.name}, {me.age}</span></div>
+            <div className="name-line dark"><span>{me.name}, {me.age}</span>{plan.premium && <Verified />}</div>
             {username && <span className="username-tag">@{username}</span>}
             <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}

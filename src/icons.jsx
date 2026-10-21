@@ -1,4 +1,5 @@
 // Icons from the Figma design (Tinder-like design/src/App.tsx).
+const BADGE = 'm9.5 2 2.5 1.5L14.5 2l1.3 2.6 2.9.2-.2 2.9L21 9.5 19.2 12l1.8 2.5-2.5 1.8.2 2.9-2.9.2-1.3 2.6-2.5-1.5L9.5 22l-1.3-2.6-2.9-.2.2-2.9L3 14.5 4.8 12 3 9.5l2.5-1.8-.2-2.9 2.9-.2L9.5 2Z'
 const paths = {
   eye: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>,
   infinity: <path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4Zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4Z" />,
@@ -25,7 +26,7 @@ const paths = {
   ),
   verified: (
     <>
-      <path d="m9.5 2 2.5 1.5L14.5 2l1.3 2.6 2.9.2-.2 2.9L21 9.5 19.2 12l1.8 2.5-2.5 1.8.2 2.9-2.9.2-1.3 2.6-2.5-1.5L9.5 22l-1.3-2.6-2.9-.2.2-2.9L3 14.5 4.8 12 3 9.5l2.5-1.8-.2-2.9 2.9-.2L9.5 2Z" />
+      <path d={BADGE} />
       <path d="m8 12 2.5 2.5L16 9" />
     </>
   ),
@@ -100,6 +101,7 @@ paths.star = <path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4
 paths.back = <path d="m15 18-6-6 6-6" />
 paths.more = <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>
 paths.plus = <path d="M12 5v14M5 12h14" />
+paths.reply = <><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>
 
 export function Icon({ name, size = 22, filled = false }) {
   return (
@@ -110,10 +112,22 @@ export function Icon({ name, size = 22, filled = false }) {
   )
 }
 
+// Blue badge next to the name of everyone with active faísca+.
+export function Verified({ size = 20 }) {
+  return (
+    <i className="verified" title="Verificado · faísca+" role="img" aria-label="Verificado">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
+        <path d={BADGE} fill="currentColor" stroke="currentColor" />
+        <path d="m8 12 2.5 2.5L16 9" fill="none" stroke="#fff" strokeWidth="2.2" />
+      </svg>
+    </i>
+  )
+}
+
 export function Brand() {
   return (
     <div className="wordmark">
-      <span className="brand-mark"><Icon name="brand" size={28} filled /></span>
+      <span className="brand-mark"><img src="/faisca-mark.png" alt="" /></span>
       <span>faísca</span>
     </div>
   )
