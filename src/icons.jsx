@@ -101,7 +101,7 @@ paths.star = <path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4
 paths.back = <path d="m15 18-6-6 6-6" />
 paths.more = <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>
 paths.plus = <path d="M12 5v14M5 12h14" />
-paths.phone = <><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M11 18h2" /></>
+paths.mail = <><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m4 7 8 6 8-6" /></>
 paths.reply = <><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>
 
 export function Icon({ name, size = 22, filled = false }) {

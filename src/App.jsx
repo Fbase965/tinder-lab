@@ -26,7 +26,11 @@ export default function App() {
     supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => setMe(data))
   }, [session])
-  const real = !!session?.user.phone_confirmed_at // "pessoa real" badge: phone confirmed by SMS
+  // "Pessoa real" badge (university email or phone, supabase/email.sql). A session refresh re-reads it.
+  const [real, setReal] = useState(false)
+  useEffect(() => {
+    if (session) supabase.rpc('badges', { p_ids: [session.user.id] }).then(({ data }) => setReal(!!data?.[0]?.phone))
+  }, [session])
   const meWithBadge = useMemo(() => me && { ...me, real }, [me, real])
 
   if (!session) return <Auth />
@@ -102,6 +106,7 @@ function Auth() {
   const [busy, setBusy] = useState(false)
   const [legal, setLegal] = useState(null)
   const [accepted, setAccepted] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const box = useRef(null)
   const captcha = useCaptcha(box, signUp)
 
@@ -167,14 +172,69 @@ function Auth() {
         )}
         <button className="primary-button" disabled={busy || (signUp && !accepted)}>{busy ? '…' : signUp ? 'Criar conta' : 'Entrar'}</button>
         {msg && <p className="form-error">{msg}</p>}
+        {!signUp && <button type="button" className="link forgot" onClick={() => setResetting(true)}>Esqueci-me da password</button>}
         <p className="switch">
           {signUp ? 'Já tens conta?' : 'Ainda não tens conta?'}{' '}
           <button type="button" className="link" onClick={switchMode}>{signUp ? 'Entrar' : 'Criar conta'}</button>
         </p>
       </form>
       {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
+      {resetting && <ResetPassword initial={username} onClose={() => setResetting(false)} onDone={(u) => { setUsername(u); setMsg('Password alterada. Entra com a nova password.') }} />}
       <InstallPrompt />
     </div>
+  )
+}
+
+// Code to the account's verified email (api/email.js), then reset_password (supabase/email.sql).
+function ResetPassword({ initial, onClose, onDone }) {
+  const [username, setUsername] = useState(initial)
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  return (
+    <Modal className="filter-modal" onClose={onClose}>
+      {(close) => (
+        <form className="username-form" onSubmit={async (e) => {
+          e.preventDefault()
+          const u = username.trim().toLowerCase()
+          setBusy(true); setErr('')
+          if (!sent) {
+            await fetch('/api/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset', username: u }) }).catch(() => {})
+            setBusy(false)
+            return setSent(true)
+          }
+          const { data } = await supabase.rpc('reset_password', { p_username: u, p_code: code, p_password: password })
+          setBusy(false)
+          if (!data) return setErr('Código errado ou expirado.')
+          onDone(u); close()
+        }}>
+          <div className="modal-heading">
+            <div><span className="kicker">CONTA</span><div className="modal-title">Redefinir password</div></div>
+            <button type="button" className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+          </div>
+          {!sent ? <>
+            <label className="field"><span>Username</span>
+              <input value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus
+                pattern="[A-Za-z0-9_.]{3,20}" title="3–20 letras, números, _ ou ." autoCapitalize="none" autoComplete="username" />
+            </label>
+            <p className="hint">Enviamos um código para o email que verificaste no perfil. Sem email verificado não é possível recuperar a conta.</p>
+          </> : <>
+            <p className="hint">Se @{username.trim().toLowerCase()} tiver um email verificado, enviámos um código. Vê também o spam.</p>
+            <label className="field"><span>Código</span>
+              <input value={code} onChange={(e) => { setCode(e.target.value); setErr('') }} required autoFocus
+                inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" />
+            </label>
+            <label className="field"><span>Nova password</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" placeholder="Mínimo 6 caracteres" />
+            </label>
+          </>}
+          {err && <p className="form-error">{err}</p>}
+          <button className="primary-button" disabled={busy}>{busy ? 'Aguarda…' : sent ? 'Mudar password' : 'Enviar código'}</button>
+        </form>
+      )}
+    </Modal>
   )
 }
 

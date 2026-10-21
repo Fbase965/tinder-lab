@@ -12,6 +12,8 @@
   "dependencies": {
     "@azure/storage-blob": "^12.34.0",
     "@supabase/supabase-js": "^2.118.0",
+    "@vercel/analytics": "^2.0.1",
+    "nodemailer": "^6.9.16",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "stripe": "^23.0.0",

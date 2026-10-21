@@ -16,7 +16,7 @@ npm run dev
 - New project: run `supabase/schema.sql` in the SQL Editor.
 - Turn off **Authentication → Email → Confirm email** (login is username + password).
 - Existing project: run only the migration files you haven't applied yet
-  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, `premium.sql`, `messages.sql`, `moderation.sql`, `phone.sql`, in that order).
+  (`photos.sql`, `height.sql`, `features.sql`, `design.sql`, `launch.sql`, `email-domain.sql`, `push.sql`, `premium.sql`, `messages.sql`, `moderation.sql`, `phone.sql`, `email.sql`, in that order).
 - `storage.sql` is only for the old Supabase photo bucket; new photos go to Azure.
 
 ## Photos (Azure Blob Storage)
@@ -52,3 +52,11 @@ captcha in Supabase → Authentication → Attack Protection with the Turnstile 
 ## Matching algorithm
 
 `src/algorithm.js`: edit `WEIGHTS` or `score()`. Tests: `node --test src/algorithm.test.js`.
+
+## Email (password reset + university badge)
+
+`supabase/email.sql` + `api/email.js`. Usernames log in with a placeholder address, so a real email is
+verified separately (Perfil → Email) and used for "Esqueci-me da password"; a university domain
+(`src/emailDomains.js`) earns the green badge. Put the same random `EMAIL_SECRET` in that SQL and on Vercel,
+plus SMTP on Vercel: `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_USER`, `SMTP_PASS`, optional `SMTP_FROM`
+(e.g. a Gmail account with an App Password: `smtp.gmail.com`).

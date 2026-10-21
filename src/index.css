@@ -686,3 +686,4 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .messages-empty svg { color: var(--coral); opacity: .85; }
 .messages-empty strong { font-family: 'Manrope'; font-size: 17px; }
 .messages-empty p { max-width: 260px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.auth-card .forgot { display: block; margin: 12px auto 0; font-size: 12px; }

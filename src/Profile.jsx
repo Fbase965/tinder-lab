@@ -7,6 +7,7 @@ import { NotificationsRow } from './Install'
 import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
 import { UNIVERSITIES, OTHER, isListed } from './universities'
+import { isUniversityEmail } from './emailDomains'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -31,7 +32,9 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
   const [admin, setAdmin] = useState(false)
   const [username, setUsername] = useState(null)
   const [renaming, setRenaming] = useState(false)
-  const [verifyingPhone, setVerifyingPhone] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [myEmail, setMyEmail] = useState(undefined)
+  useEffect(() => { supabase.rpc('my_email').then(({ data }) => setMyEmail(data?.[0] ?? null)) }, [])
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setUsername(data.session?.user.email?.split('@')[0] ?? null)) }, [])
 
   useEffect(() => {
@@ -106,10 +109,12 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
               <div><strong>Username</strong><span>{username ? `@${username} · usado para entrar` : '…'}</span></div>
               <Icon name="chevron" />
             </button>
-            <button onClick={() => !me.real && setVerifyingPhone(true)}>
-              <i className="mint"><Icon name="phone" /></i>
-              <div><strong>Verificar telemóvel</strong><span>{me.real ? 'Verificado · tens o selo de pessoa real' : 'Ganha o selo verde de pessoa real'}</span></div>
-              {me.real ? <Badges p={{ real: true }} /> : <Icon name="chevron" />}
+            <button onClick={() => setVerifyingEmail(true)}>
+              <i className="mint"><Icon name="mail" /></i>
+              <div><strong>Email</strong><span>{myEmail === undefined ? '…' : myEmail
+                ? `${myEmail.email} · verificado${myEmail.university ? ' · universidade' : ''}`
+                : 'Recupera a password · email da universidade dá o selo verde'}</span></div>
+              {myEmail?.university ? <Badges p={{ real: true }} /> : <Icon name="chevron" />}
             </button>
             <NotificationsRow toast={toast} />
             {plan.isAdmin && (
@@ -131,7 +136,8 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         </section>
         {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
         {admin && <AdminPanel onClose={() => setAdmin(false)} toast={toast} />}
-        {verifyingPhone && <PhoneModal onClose={() => setVerifyingPhone(false)} toast={toast} />}
+        {verifyingEmail && <EmailModal current={myEmail} onClose={() => setVerifyingEmail(false)} toast={toast}
+          onVerified={(e) => { setMyEmail(e); supabase.auth.refreshSession() /* re-reads my badges in App */ }} />}
         {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
       </div>
     </div>
@@ -461,56 +467,64 @@ const USERNAME_ERRORS = {
 }
 
 // change_username() in supabase/username.sql; the login email follows the username.
-// SMS code through Supabase Auth (Phone provider on, PT numbers only). The number stays private:
-// other people only see the green badge (supabase/phone.sql). The session update re-renders me.real.
-const PHONE_ERRORS = {
-  phone_exists: 'Este número já está associado a outra conta.',
-  over_sms_send_rate_limit: 'Pediste demasiados códigos. Tenta daqui a uns minutos.',
-  otp_expired: 'Código errado ou expirado.',
-  phone_provider_disabled: 'A verificação por SMS ainda não está ativa.',
-  sms_send_failed: 'Não foi possível enviar o SMS. Confirma o número.',
+// A real email next to the username login: password reset, and a university address earns the green badge.
+// api/email.js sends the code; confirm_email (supabase/email.sql) checks it.
+const EMAIL_ERRORS = {
+  email_taken: 'Este email já está associado a outra conta.',
+  too_soon: 'Espera um minuto antes de pedir outro código.',
+  too_many: 'Pediste demasiados códigos. Tenta daqui a uma hora.',
+  invalid_email: 'Esse email não parece válido.',
+  send_failed: 'Não foi possível enviar o email. Tenta mais tarde.',
 }
-const phoneError = (e) => PHONE_ERRORS[e.code] ?? e.message
 
-function PhoneModal({ onClose, toast }) {
-  const [phone, setPhone] = useState('')
+function EmailModal({ current, onClose, onVerified, toast }) {
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const full = `+351${phone.replace(/\D/g, '')}`
+  const uni = isUniversityEmail(email)
   return (
     <Modal className="filter-modal" onClose={onClose}>
       {(close) => (
         <form className="username-form" onSubmit={async (e) => {
           e.preventDefault()
           setBusy(true); setErr('')
-          const { error } = sent
-            ? await supabase.auth.verifyOtp({ phone: full, token: code.trim(), type: 'phone_change' })
-            : await supabase.auth.updateUser({ phone: full })
+          if (!sent) {
+            const { data: { session } } = await supabase.auth.getSession()
+            const r = await fetch('/api/email', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+              body: JSON.stringify({ action: 'verify', email }) }).then((x) => x.json()).catch(() => ({ error: 'send_failed' }))
+            setBusy(false)
+            if (r.error) return setErr(Object.entries(EMAIL_ERRORS).find(([k]) => r.error.includes(k))?.[1] ?? r.error)
+            return setSent(true)
+          }
+          const { data, error } = await supabase.rpc('confirm_email', { p_code: code })
           setBusy(false)
-          if (error) return setErr(phoneError(error))
-          if (!sent) return setSent(true)
-          toast('Telemóvel verificado. Ganhaste o selo de pessoa real!'); close()
+          if (error || !data) return setErr('Código errado ou expirado.')
+          onVerified({ email: email.trim().toLowerCase(), university: uni })
+          toast(uni ? 'Email verificado. Ganhaste o selo verde de pessoa real!' : 'Email verificado. Já podes recuperar a password.')
+          close()
         }}>
           <div className="modal-heading">
-            <div><span className="kicker">CONTA</span><div className="modal-title">Verificar telemóvel</div></div>
+            <div><span className="kicker">CONTA</span><div className="modal-title">{current ? 'Mudar email' : 'Verificar email'}</div></div>
             <button type="button" className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
           </div>
           {sent ? (
-            <label className="field"><span>Código enviado para {full}</span>
+            <label className="field"><span>Código enviado para {email.trim()}</span>
               <input value={code} onChange={(e) => { setCode(e.target.value); setErr('') }} required autoFocus
                 inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" />
             </label>
           ) : (
-            <label className="field"><span>Número de telemóvel (+351)</span>
-              <input value={phone} onChange={(e) => { setPhone(e.target.value); setErr('') }} required autoFocus
-                type="tel" inputMode="tel" autoComplete="tel-national" pattern="9[0-9 ]{8,11}" title="Número português começado por 9" placeholder="912 345 678" />
+            <label className="field"><span>Email</span>
+              <input value={email} onChange={(e) => { setEmail(e.target.value); setErr('') }} required autoFocus
+                type="email" autoComplete="email" autoCapitalize="none" placeholder="o.teu.email@up.pt" />
             </label>
           )}
           <p className="hint">{sent
-            ? <>Não chegou? <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>Mudar número ou reenviar</button></>
-            : 'Enviamos um código por SMS. O teu número nunca é mostrado a ninguém: os outros só veem o selo verde de pessoa real.'}</p>
+            ? <>Não chegou? Vê o spam ou <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>muda o email ou reenvia</button>.</>
+            : uni
+              ? 'Email da universidade: ao confirmar, ganhas o selo verde de pessoa real.'
+              : 'Usa o email da universidade para ganhares o selo verde. Qualquer email serve para recuperar a password. Ninguém vê o teu email.'}</p>
           {err && <p className="form-error">{err}</p>}
           <button className="primary-button" disabled={busy}>{busy ? 'Aguarda…' : sent ? 'Confirmar código' : 'Enviar código'}</button>
         </form>
