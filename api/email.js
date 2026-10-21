@@ -44,6 +44,7 @@ export default async function handler(req, res) {
     }
     res.status(400).end()
   } catch (e) {
+    console.error('email send failed:', e.code, e.responseCode, e.response ?? e.message)
     res.status(500).json({ error: 'send_failed', detail: String(e.message).slice(0, 200) })
   }
 }
