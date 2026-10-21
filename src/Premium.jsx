@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { Icon, Badges } from './icons'
+import { Icon, Badges, RoleBadge, ROLES } from './icons'
 import { Avatar, Modal } from './App'
 import { withVerified } from './data'
 
@@ -147,7 +147,47 @@ export function BoostButton({ plan, openPremium, toast, compact }) {
 }
 
 // Grant or revoke faísca+ by username (admins table in supabase/premium.sql).
+const ADMIN_TABS = [['stats', 'Resumo'], ['plus', 'faísca+'], ['roles', 'Cargos'], ['reports', 'Denúncias'], ['push', 'Notificações']]
+const userError = (error, user) => (error.message.includes('user_not_found') ? `Não existe o username “${user}”` : error.message)
+
+// Admin tools, one tab each (admins table in supabase/premium.sql).
 export function AdminPanel({ onClose, toast }) {
+  const [tab, setTab] = useState('stats')
+  return (
+    <Modal className="filter-modal admin-panel" onClose={onClose}>
+      {(close) => <>
+        <div className="modal-heading">
+          <div><span className="kicker">ADMINISTRAÇÃO</span><div className="modal-title">{ADMIN_TABS.find(([id]) => id === tab)[1]}</div></div>
+          <button className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+        </div>
+        <div className="admin-tabs" role="tablist">
+          {ADMIN_TABS.map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'selected' : ''} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+        {tab === 'stats' && <AdminStats />}
+        {tab === 'plus' && <PlusAdmin toast={toast} />}
+        {tab === 'roles' && <RolesAdmin toast={toast} />}
+        {tab === 'reports' && <Reports />}
+        {tab === 'push' && <PushTester toast={toast} />}
+      </>}
+    </Modal>
+  )
+}
+
+const STATS = [['users', 'Utilizadores'], ['new_week', 'Novos (7 dias)'], ['matches', 'Matches'], ['messages_day', 'Mensagens (24 h)'],
+  ['premium', 'Com faísca+'], ['verified', 'Email verificado'], ['reports', 'Denúncias']]
+function AdminStats() {
+  const [s, setS] = useState(null)
+  useEffect(() => { supabase.rpc('admin_stats').then(({ data }) => setS(data?.[0] ?? {})) }, [])
+  return (
+    <div className="admin-stats">
+      {STATS.map(([k, label]) => <div key={k}><strong>{s ? s[k] ?? '–' : '…'}</strong><span>{label}</span></div>)}
+    </div>
+  )
+}
+
+function PlusAdmin({ toast }) {
   const [list, setList] = useState(null)
   const [username, setUsername] = useState('')
   const [days, setDays] = useState(30)
@@ -158,43 +198,74 @@ export function AdminPanel({ onClose, toast }) {
     setBusy(true)
     const { error } = await supabase.rpc('admin_set_premium', { p_username: user, p_days: d })
     setBusy(false)
-    if (error) return toast(error.message.includes('user_not_found') ? `Não existe o username “${user}”` : error.message)
+    if (error) return toast(userError(error, user))
     toast(d > 0 ? `faísca+ dado a ${user} por ${d} dias` : `faísca+ removido a ${user}`); setUsername(''); load()
   }
-  return (
-    <Modal className="filter-modal admin-panel" onClose={onClose}>
-      {(close) => <>
-        <div className="modal-heading">
-          <div><span className="kicker">ADMINISTRAÇÃO</span><div className="modal-title">Dar faísca+</div></div>
-          <button className="icon-button" onClick={close} aria-label="Fechar"><Icon name="close" /></button>
+  return <>
+    <form onSubmit={(e) => { e.preventDefault(); if (username.trim()) set(username.trim(), days) }}>
+      <label className="field"><span>Username</span>
+        <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ex: joana_23" required />
+      </label>
+      <span className="field-label">Duração</span>
+      <div className="choice-row">
+        {[[7, '7 dias'], [30, '1 mês'], [365, '1 ano']].map(([d, l]) => (
+          <button type="button" key={d} className={days === d ? 'selected' : ''} onClick={() => setDays(d)}>{l}</button>
+        ))}
+      </div>
+      <button className="primary-button" disabled={busy}>Dar faísca+</button>
+    </form>
+    <span className="settings-label">COM FAÍSCA+ ({list?.length ?? '…'})</span>
+    <div className="admin-list">
+      {list?.map((u) => (
+        <div key={u.username}>
+          <div><strong>{u.name}</strong><span>@{u.username} · até {dateText(u.premium_until)}</span></div>
+          <button className="link danger" disabled={busy} onClick={() => confirm(`Remover faísca+ a ${u.username}?`) && set(u.username, 0)}>Remover</button>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); if (username.trim()) set(username.trim(), days) }}>
-          <label className="field"><span>Username</span>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ex: joana_23" required />
-          </label>
-          <span className="field-label">Duração</span>
-          <div className="choice-row">
-            {[[7, '7 dias'], [30, '1 mês'], [365, '1 ano']].map(([d, l]) => (
-              <button type="button" key={d} className={days === d ? 'selected' : ''} onClick={() => setDays(d)}>{l}</button>
-            ))}
-          </div>
-          <button className="primary-button" disabled={busy}>Dar faísca+</button>
-        </form>
-        <PushTester toast={toast} />
-        <Reports />
-        <span className="settings-label">COM FAÍSCA+ ({list?.length ?? '…'})</span>
-        <div className="admin-list">
-          {list?.map((u) => (
-            <div key={u.username}>
-              <div><strong>{u.name}</strong><span>@{u.username} · até {dateText(u.premium_until)}</span></div>
-              <button className="link danger" disabled={busy} onClick={() => confirm(`Remover faísca+ a ${u.username}?`) && set(u.username, 0)}>Remover</button>
-            </div>
-          ))}
-          {list?.length === 0 && <p className="empty-note">Ninguém tem faísca+ neste momento.</p>}
+      ))}
+      {list?.length === 0 && <p className="empty-note">Ninguém tem faísca+ neste momento.</p>}
+    </div>
+  </>
+}
+
+// Team badges next to the name (supabase/staff.sql).
+function RolesAdmin({ toast }) {
+  const [list, setList] = useState(null)
+  const [username, setUsername] = useState('')
+  const [role, setRole] = useState('founder')
+  const [busy, setBusy] = useState(false)
+  const load = () => supabase.rpc('admin_list_roles').then(({ data }) => setList(data ?? []))
+  useEffect(() => { load() }, [])
+  const set = async (user, r) => {
+    setBusy(true)
+    const { error } = await supabase.rpc('admin_set_role', { p_username: user, p_role: r })
+    setBusy(false)
+    if (error) return toast(userError(error, user))
+    toast(r ? `${ROLES[r]} dado a ${user}` : `Cargo removido a ${user}`); setUsername(''); load()
+  }
+  return <>
+    <form onSubmit={(e) => { e.preventDefault(); if (username.trim()) set(username.trim(), role) }}>
+      <label className="field"><span>Username</span>
+        <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ex: joana_23" required />
+      </label>
+      <span className="field-label">Cargo</span>
+      <div className="choice-row role-choice">
+        {Object.entries(ROLES).map(([id, label]) => (
+          <button type="button" key={id} className={role === id ? 'selected' : ''} onClick={() => setRole(id)}><RoleBadge role={id} size={16} /> {label}</button>
+        ))}
+      </div>
+      <button className="primary-button" disabled={busy}>Dar cargo</button>
+    </form>
+    <span className="settings-label">EQUIPA ({list?.length ?? '…'})</span>
+    <div className="admin-list">
+      {list?.map((u) => (
+        <div key={u.username}>
+          <div><strong>{u.name} <RoleBadge role={u.role} size={15} /></strong><span>@{u.username} · {ROLES[u.role]}</span></div>
+          <button className="link danger" disabled={busy} onClick={() => confirm(`Remover o cargo a ${u.username}?`) && set(u.username, null)}>Remover</button>
         </div>
-      </>}
-    </Modal>
-  )
+      ))}
+      {list?.length === 0 && <p className="empty-note">Ainda ninguém tem cargo.</p>}
+    </div>
+  </>
 }
 
 // Reports = blocks with a reason (supabase/moderation.sql). Newest first.

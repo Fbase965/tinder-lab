@@ -27,11 +27,11 @@ export default function App() {
       .then(({ data }) => setMe(data))
   }, [session])
   // Verified badge (confirmed email or phone, supabase/email.sql). A session refresh re-reads it.
-  const [verified, setVerified] = useState(false)
+  const [badges, setBadges] = useState({})
   useEffect(() => {
-    if (session) supabase.rpc('badges', { p_ids: [session.user.id] }).then(({ data }) => setVerified(!!data?.[0]?.phone))
+    if (session) supabase.rpc('badges', { p_ids: [session.user.id] }).then(({ data }) => setBadges({ verified: !!data?.[0]?.phone, role: data?.[0]?.role }))
   }, [session])
-  const meWithBadge = useMemo(() => me && { ...me, verified }, [me, verified])
+  const meWithBadge = useMemo(() => me && { ...me, ...badges }, [me, badges])
 
   if (!session) return <Auth />
   if (me === undefined) return <p className="loading">A carregar…</p>
@@ -290,7 +290,7 @@ function Shell({ me, setMe }) {
   // In-app banner for a new message or match while you're elsewhere in the app (push covers the app being closed).
   const [banner, setBanner] = useState(null) // { id, kind: 'message' | 'match', text, at }
   const where = useRef({})
-  where.current = { ...where.current, page, chatWith }
+  useEffect(() => { Object.assign(where.current, { page, chatWith }) }, [page, chatWith])
   useEffect(() => {
     const ch = supabase.channel('in-app-banner')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, ({ new: m }) => {
@@ -350,7 +350,7 @@ function Shell({ me, setMe }) {
         </nav>
         <button className="side-profile" onClick={() => navigate('profile')}>
           <Avatar p={me} />
-          <div><strong>{me.name}, {me.age}<Badges p={{ verified: me.verified, plus: plan.premium }} size={15} /></strong><span>Ver o meu perfil</span></div>
+          <div><strong>{me.name}, {me.age}<Badges p={{ ...me, plus: plan.premium }} size={15} /></strong><span>Ver o meu perfil</span></div>
           <Icon name="chevron" size={18} />
         </button>
       </aside>

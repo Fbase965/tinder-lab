@@ -67,7 +67,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
             <span>{complete}% completo</span>
           </div>
           <div className="preview-content">
-            <div className="name-line dark"><span>{me.name}, {me.age}</span><Badges p={{ verified: me.verified, plus: plan.premium }} /></div>
+            <div className="name-line dark"><span>{me.name}, {me.age}</span><Badges p={{ ...me, plus: plan.premium }} /></div>
             {username && <span className="username-tag">@{username}</span>}
             <p>{[me.university, me.height_cm && `${me.height_cm} cm`].filter(Boolean).join(' · ') || 'Adiciona a tua universidade e altura'}</p>
             {me.interests.length > 0 && <div className="tags dark-tags">{me.interests.map((t) => <span key={t}>{t}</span>)}</div>}

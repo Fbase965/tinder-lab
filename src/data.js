@@ -107,7 +107,7 @@ export function useMatches(me) {
 const badgeMap = async (ids) => {
   if (!ids.length) return new Map()
   const { data } = await supabase.rpc('badges', { p_ids: ids })
-  return new Map((data ?? []).map((b) => [b.id, { verified: b.phone, plus: b.premium }]))
+  return new Map((data ?? []).map((b) => [b.id, { verified: b.phone, plus: b.premium, role: b.role }]))
 }
 export async function withVerified(rows) {
   const badges = await badgeMap((rows ?? []).map((r) => r.id).filter(Boolean))

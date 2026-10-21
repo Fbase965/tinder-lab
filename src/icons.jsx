@@ -134,8 +134,25 @@ export function PlusBadge({ size = 20 }) {
   )
 }
 
-// Every badge a person has, next to their name. p: { verified, plus }.
-export const Badges = ({ p, size }) => <>{p.verified && <Verified size={size} />}{p.plus && <PlusBadge size={size} />}</>
+// Team roles given in the admin panel (supabase/staff.sql).
+export const ROLES = { founder: 'Founder', cofounder: 'Co-founder', developer: 'Developer' }
+const ROLE_ICONS = {
+  founder: <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8Z" fill="currentColor" />,
+  cofounder: <><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8Z" fill="currentColor" /><path d="M9.5 15.5h5" stroke="#fff" strokeWidth="2" /></>,
+  developer: <><rect x="2.5" y="3.5" width="19" height="17" rx="5" fill="currentColor" /><path d="m9.5 9-3 3 3 3M14.5 9l3 3-3 3" fill="none" stroke="#fff" strokeWidth="2" /></>,
+}
+export function RoleBadge({ role, size = 20 }) {
+  return (
+    <i className={`verified role-${role}`} title={ROLES[role]} role="img" aria-label={ROLES[role]}>
+      <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} strokeLinecap="round" strokeLinejoin="round">{ROLE_ICONS[role]}</svg>
+    </i>
+  )
+}
+
+// Every badge a person has, next to their name. p: { role, verified, plus }.
+export const Badges = ({ p, size }) => <>
+  {ROLES[p.role] && <RoleBadge role={p.role} size={size} />}{p.verified && <Verified size={size} />}{p.plus && <PlusBadge size={size} />}
+</>
 
 export function Brand() {
   return (
