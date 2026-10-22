@@ -23,7 +23,8 @@ export const openInstall = () => window.dispatchEvent(new Event(OPEN_EVENT))
 
 // Bottom sheet that turns the site into a home-screen app: native dialog on Android/Chrome, steps on iOS.
 export function InstallPrompt() {
-  const [open, setOpen] = useState(() => flag.get(INSTALL) === 'pending' && isPhone() && !isStandalone())
+  // Also right away when a phone opens an invite link: install first, then create the account inside the app.
+  const [open, setOpen] = useState(() => (flag.get(INSTALL) === 'pending' || new URLSearchParams(location.search).has('ref')) && isPhone() && !isStandalone())
   const [native, setNative] = useState(canPromptInstall)
   useEffect(() => onInstallChange(() => setNative(canPromptInstall())), [])
   useEffect(() => {

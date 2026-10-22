@@ -55,7 +55,10 @@ const INVITE_REF = (() => {
   try {
     const r = new URLSearchParams(location.search).get('ref')
     if (r) localStorage.setItem('faisca-ref', r.toLowerCase())
-    return localStorage.getItem('faisca-ref')
+    const ref = localStorage.getItem('faisca-ref')
+    // Installing from here keeps the invite: the home-screen app opens /?ref=… (api/manifest.js).
+    if (ref) document.querySelector('link[rel=manifest]')?.setAttribute('href', `/api/manifest?ref=${encodeURIComponent(ref)}`)
+    return ref
   } catch { return null }
 })()
 const ERRORS = {
@@ -106,7 +109,7 @@ function useCaptcha(box, mode) {
 }
 
 function Auth() {
-  const [signUp, setSignUp] = useState(false)
+  const [signUp, setSignUp] = useState(() => new URLSearchParams(location.search).has('ref')) // invite links open on sign-up
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
