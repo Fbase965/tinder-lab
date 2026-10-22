@@ -147,28 +147,11 @@ export function dayLabel(iso) {
   return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }).toUpperCase()
 }
 
-// rows: [{ id, super, at }] newest first -> profiles with badges and whether it's a match.
-async function withPeople(rows) {
-  if (!rows?.length) return []
-  const [{ data: p }, { data: m }] = await Promise.all([
-    supabase.from('profiles').select('*').in('id', rows.map((r) => r.id)), supabase.from('matches').select('a, b')])
-  const matched = new Set((m ?? []).flatMap((x) => [x.a, x.b]))
-  const people = await withVerified(p)
-  return rows.map((r) => {
-    const prof = people.find((y) => y.id === r.id)
-    return prof && { ...prof, super: r.super, liked_at: r.at, matched: matched.has(r.id) }
-  }).filter(Boolean)
-}
-
-// My likes (my own swipes are readable).
-export async function loadMyLikes(limit = 100) {
-  const { data } = await supabase.from('swipes').select('target, super, created_at').eq('liked', true)
-    .order('created_at', { ascending: false }).limit(limit)
-  return withPeople((data ?? []).map((x) => ({ id: x.target, super: x.super, at: x.created_at })))
-}
-
-// Everyone who liked me (faísca+, supabase/likers.sql).
-export const loadLikers = () => supabase.rpc('my_likers').then(({ data }) => withPeople(data))
+// Whom I liked ('liked') or who liked me ('likers', faísca+), newest first, with profile, like date and whether
+// it's a match (supabase/people-lists.sql: unmatched profiles can't be read directly).
+const peopleList = (kind, limit = 200) => supabase.rpc('people_list', { p_kind: kind }).limit(limit).then(({ data }) => withVerified(data))
+export const loadMyLikes = (limit) => peopleList('liked', limit)
+export const loadLikers = () => peopleList('likers')
 
 // "New since you last opened Explore" for likes, views and matches (supabase/explore-seen.sql).
 // The server keeps when you last opened it, so a seen novelty stays gone on every device.
