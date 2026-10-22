@@ -285,7 +285,7 @@ function Shell({ me, setMe }) {
   const unread = (matches.list ?? []).filter((m) => isUnread(me, m)).length
   const complete = completeness(me, hasLocation)
 
-  const explore = useExploreNews(me)
+  const explore = useExploreNews(matches.list?.length) // a new match re-checks at once
   const [exploreFresh, setExploreFresh] = useState({}) // what was new when Explore was opened, so its pills stay for the visit
   const navigate = (p) => {
     if (p === 'explore') { setExploreFresh(explore.news); explore.markSeen() }
@@ -349,7 +349,7 @@ function Shell({ me, setMe }) {
               <Icon name={item.icon} filled={page === item.id} />
               <span>{item.label}</span>
               {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
-              {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i>{explore.total}</i>}
+              {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i className="dot" aria-label="Novidades" />}
               {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
             </button>
           ))}
@@ -378,7 +378,7 @@ function Shell({ me, setMe }) {
               openFilters={() => setFilterOpen(true)} openSheet={setSheet} goProfile={() => navigate('profile')}
               boost={<BoostButton plan={plan} openPremium={openPremium} toast={toast} />} />
           )}
-          {page === 'explore' && <Explore deck={deckApi.deck} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} fresh={exploreFresh} />}
+          {page === 'explore' && <Explore deck={deckApi.deck} matches={matches.list} swipe={swipe} openSheet={setSheet} plan={plan} openPremium={openPremium} fresh={exploreFresh} />}
           {page === 'messages' && (
             <Messages me={me} matches={matches} selected={chatWith} onSelect={setChatWith} toast={toast} openSheet={setSheet} />
           )}
@@ -396,7 +396,7 @@ function Shell({ me, setMe }) {
             <Icon name={item.icon} filled={page === item.id} />
             <span>{item.short ?? item.label}</span>
             {item.id === 'messages' && unread > 0 && <i>{unread}</i>}
-              {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i>{explore.total}</i>}
+            {item.id === 'explore' && page !== 'explore' && explore.total > 0 && <i className="dot" aria-label="Novidades" />}
             {item.id === 'explore' && !plan.premium && <b className="plus-tag">+</b>}
           </button>
         ))}
@@ -404,7 +404,7 @@ function Shell({ me, setMe }) {
 
       {toastText && <div key={toastText} className="toast" role="status">{toastText}</div>}
       {banner && <InAppBanner key={banner.at} banner={banner} person={matches.list?.find((x) => x.id === banner.id)}
-        onOpen={() => { setBanner(null); openChat({ id: banner.id }) }} />}
+        onOpen={() => { setBanner(null); openChat({ id: banner.id }) }} onDismiss={() => setBanner(null)} />}
       {premiumOpen && <PremiumSheet plan={plan} onClose={() => setPremiumOpen(false)} toast={toast} />}
       {me.university == null && <UniversityPrompt me={me} setMe={setMe} toast={toast} />}
       <InstallPrompt />
@@ -460,10 +460,32 @@ export function Modal({ onClose, className, backdropClass = '', children }) {
   )
 }
 
-function InAppBanner({ banner, person, onOpen }) {
+// Drag sideways or up to dismiss; a plain tap opens the chat.
+function InAppBanner({ banner, person, onOpen, onDismiss }) {
   const match = banner.kind === 'match'
+  const [d, setD] = useState({ x: 0, y: 0, dragging: false })
+  const start = useRef(null)
+  const dragged = useRef(false) // swallow the click that ends a drag
+  const down = (e) => { start.current = { x: e.clientX, y: e.clientY }; dragged.current = false; e.currentTarget.setPointerCapture(e.pointerId) }
+  const move = (e) => {
+    if (!start.current) return
+    const x = e.clientX - start.current.x, y = Math.min(0, e.clientY - start.current.y)
+    if (Math.abs(x) + Math.abs(y) > 8) dragged.current = true
+    if (dragged.current) setD({ x, y, dragging: true })
+  }
+  const end = () => {
+    if (!start.current) return
+    start.current = null
+    const up = d.y < -30 && -d.y > Math.abs(d.x)
+    if (!up && Math.abs(d.x) < 80) return setD({ x: 0, y: 0, dragging: false })
+    setD(up ? { x: d.x, y: -200, dragging: false } : { x: Math.sign(d.x) * innerWidth, y: d.y, dragging: false })
+    setTimeout(onDismiss, 200)
+  }
   return (
-    <button className="in-app-banner" role="status" onClick={onOpen}>
+    <button className={`in-app-banner ${d.dragging ? 'dragging' : ''}`} role="status"
+      style={{ '--bx': `${d.x}px`, '--by': `${d.y}px`, '--bo': 1 - Math.min(1, Math.max(Math.abs(d.x) / 300, -d.y / 120)) }}
+      onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+      onClick={() => !dragged.current && onOpen()}>
       <i className="avatar-wrap">{person ? <Avatar p={person} /> : <Icon name={match ? 'heart' : 'message'} />}</i>
       <div>
         <strong>{match ? `É um match${person ? ` com ${person.name}` : ''}!` : person?.name ?? 'Nova mensagem'}</strong>

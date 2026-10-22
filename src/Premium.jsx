@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { Icon, Badges, RoleBadge, ROLES } from './icons'
 import { Avatar, Modal } from './App'
-import { withVerified } from './data'
+import { withVerified, shortDate } from './data'
 
 const PRICE = import.meta.env.VITE_PREMIUM_PRICE // e.g. "4,99 €/mês"; set on Vercel with the Stripe price
 
@@ -110,6 +110,7 @@ export function PeopleStrip({ kind, plan, openPremium, openSheet, refreshKey, fr
             <button key={p.id} style={{ '--i': i }} onClick={() => openSheet({ ...p, swipeable: kind === 'likes' })}>
               <i className={p.super_likes_me ? 'super' : ''}><Avatar p={p} /></i>
               <span>{p.name}, {p.age}<Badges p={p} size={13} /></span>
+              {p.at && <small>{shortDate(p.at)}</small>}
             </button>
           ))
           : Array.from({ length: Math.min(total, 8) }, (_, i) => (

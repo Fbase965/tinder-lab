@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { rank } from './algorithm'
 
@@ -134,6 +134,12 @@ export function shortTime(iso) {
   return d.toLocaleDateString('pt-PT', { weekday: 'short' })
 }
 
+// 24/10, or 24/10/2025 once it's from another year.
+export function shortDate(iso) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', ...(d.getFullYear() !== new Date().getFullYear() && { year: 'numeric' }) })
+}
+
 export function dayLabel(iso) {
   const d = new Date(iso)
   if (sameDay(d, new Date())) return 'HOJE'
@@ -164,29 +170,18 @@ export async function loadMyLikes(limit = 100) {
 // Everyone who liked me (faísca+, supabase/likers.sql).
 export const loadLikers = () => supabase.rpc('my_likers').then(({ data }) => withPeople(data))
 
-// "New since you last opened Explore" for likes and views: totals now minus totals when last seen.
-// shortcut: seen totals live in this browser (another phone shows them as new again); move to the DB if that annoys.
-const KINDS = ['likes', 'views']
-const seenKey = (uid, k) => `faisca-seen-${uid}-${k}`
-const readSeen = (uid) => Object.fromEntries(KINDS.map((k) => { try { return [k, +localStorage.getItem(seenKey(uid, k)) || 0] } catch { return [k, 0] } }))
-export function useExploreNews(me) {
-  const [totals, setTotals] = useState({ likes: 0, views: 0 })
-  const [seen, setSeen] = useState(() => readSeen(me.id))
-  const latest = useRef(totals)
-  useEffect(() => { latest.current = totals }, [totals])
-  const load = useCallback(() => Promise.all(KINDS.map((k) => supabase.rpc('people_for_me', { p_kind: k })))
-    .then((rs) => setTotals(Object.fromEntries(KINDS.map((k, i) => [k, rs[i].data?.[0]?.total ?? 0])))), [])
+// "New since you last opened Explore" for likes, views and matches (supabase/explore-seen.sql).
+// The server keeps when you last opened it, so a seen novelty stays gone on every device.
+const NO_NEWS = { likes: 0, views: 0, matches: 0 }
+export function useExploreNews(refreshKey) {
+  const [news, setNews] = useState(NO_NEWS)
+  const load = useCallback(() => supabase.rpc('explore_news').then(({ data }) => data?.[0] && setNews(data[0])), [])
+  useEffect(() => { load() }, [load, refreshKey])
   useEffect(() => {
-    load()
     const onShow = () => document.visibilityState === 'visible' && load()
     document.addEventListener('visibilitychange', onShow)
     return () => document.removeEventListener('visibilitychange', onShow)
   }, [load])
-  const markSeen = useCallback(() => {
-    setSeen(latest.current)
-    try { KINDS.forEach((k) => localStorage.setItem(seenKey(me.id, k), latest.current[k])) } catch { /* private mode: badge just comes back */ }
-  }, [me.id])
-  // Views expire after 30 days, so a total can drop below what was seen: never negative.
-  const news = Object.fromEntries(KINDS.map((k) => [k, Math.max(0, totals[k] - seen[k])]))
-  return { news, total: news.likes + news.views, markSeen }
+  const markSeen = useCallback(() => { setNews(NO_NEWS); supabase.rpc('mark_explore_seen').then(() => {}) }, [])
+  return { news, total: news.likes + news.views + news.matches, markSeen }
 }

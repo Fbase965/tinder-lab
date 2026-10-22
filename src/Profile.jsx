@@ -8,7 +8,7 @@ import { disablePush } from './pwa'
 import { AdminPanel } from './Premium'
 import { UNIVERSITIES, OTHER, isListed } from './universities'
 import { isUniversityEmail } from './emailDomains'
-import { loadMyLikes, loadLikers } from './data'
+import { loadMyLikes, loadLikers, shortDate } from './data'
 
 const GENDERS = [['man', 'Homem'], ['woman', 'Mulher'], ['other', 'Outro']]
 const LOOKING = [['women', 'Mulheres'], ['men', 'Homens'], ['everyone', 'Todos']]
@@ -552,7 +552,6 @@ function EmailModal({ current, onClose, onVerified, toast }) {
 function PeopleModal({ kicker, title, load, empty, onClose, openSheet }) {
   const [rows, setRows] = useState(null)
   useEffect(() => { load().then(setRows) }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const when = (iso) => iso && new Date(iso).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
   return (
     <Modal className="filter-modal" onClose={onClose}>
       {(close) => <>
@@ -567,8 +566,8 @@ function PeopleModal({ kicker, title, load, empty, onClose, openSheet }) {
             <button key={p.id} onClick={() => { close(); openSheet(p) }}>
               <i className="avatar-wrap"><Avatar p={p} /></i>
               <div><strong>{p.name}, {p.age}<Badges p={p} size={14} /></strong>
-                <span>{[p.matched && 'Match', p.super && 'Super Like', when(p.liked_at ?? p.matched_at)].filter(Boolean).join(' · ')}</span></div>
-              <Icon name="chevron" size={18} />
+                {(p.matched || p.super) && <span>{[p.matched && 'Match', p.super && 'Super Like'].filter(Boolean).join(' · ')}</span>}</div>
+              {(p.liked_at ?? p.matched_at) && <time>{shortDate(p.liked_at ?? p.matched_at)}</time>}
             </button>
           ))}
         </div>

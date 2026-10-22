@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Icon, Badges } from './icons'
 import { Avatar } from './App'
-import { loadMyLikes } from './data'
+import { loadMyLikes, shortDate } from './data'
 import { matchPercent } from './algorithm'
 import { PeopleStrip } from './Premium'
 
-export function Explore({ deck, swipe, openSheet, plan, openPremium, fresh = {} }) {
+export function Explore({ deck, matches, swipe, openSheet, plan, openPremium, fresh = {} }) {
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   if (!deck) return <p className="loading">A carregar…</p>
@@ -29,6 +29,7 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium, fresh = {} 
         </div>
       </div>
       <PeopleStrip kind="likes" plan={plan} openPremium={openPremium} openSheet={openSheet} refreshKey={deck.length} fresh={fresh.likes} />
+      <Strip title="Matches" rows={matches} at="matched_at" fresh={fresh.matches} openSheet={openSheet} empty="Quando houver um match, aparece aqui." />
       <PeopleStrip kind="views" plan={plan} openPremium={openPremium} openSheet={openSheet} fresh={fresh.views} />
       <MyLikesStrip openSheet={openSheet} refreshKey={deck.length} />
       <div className="section-row">
@@ -67,16 +68,24 @@ export function Explore({ deck, swipe, openSheet, plan, openPremium, fresh = {} 
 function MyLikesStrip({ openSheet, refreshKey }) {
   const [rows, setRows] = useState(null)
   useEffect(() => { loadMyLikes(30).then(setRows) }, [refreshKey])
+  return <Strip title="Gostaste de" rows={rows} at="liked_at" openSheet={openSheet} empty="Quando gostares de alguém, aparece aqui." />
+}
+
+// A row of people with the date of the like or match under each name.
+function Strip({ title, rows, at, fresh = 0, empty, openSheet }) {
   if (!rows) return null
   return (
     <section className="people-strip">
-      <div className="section-row"><div className="section-title">Gostaste de</div></div>
-      {rows.length === 0 && <p className="empty-note">Quando gostares de alguém, aparece aqui.</p>}
+      <div className="section-row">
+        <div className="section-title">{title} {fresh > 0 && <span className="count-pill" aria-label={`${fresh} novos`}>{fresh}</span>}</div>
+      </div>
+      {rows.length === 0 && <p className="empty-note">{empty}</p>}
       <div className="strip">
         {rows.map((p, i) => (
           <button key={p.id} style={{ '--i': i }} onClick={() => openSheet(p)}>
             <i className={p.super ? 'super' : ''}><Avatar p={p} /></i>
             <span>{p.name}, {p.age}<Badges p={p} size={13} /></span>
+            {p[at] && <small>{shortDate(p[at])}</small>}
           </button>
         ))}
       </div>

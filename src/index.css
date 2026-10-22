@@ -630,6 +630,8 @@ input:focus-visible, textarea:focus-visible { outline: 0; }
 .strip i.blurred { color: #fff; background: radial-gradient(circle at 35% 30%, hsl(var(--h) 70% 78%), hsl(calc(var(--h) + 40) 55% 45%)); filter: saturate(.9); box-shadow: 0 0 0 2px #e6c2c3; }
 .strip i.blurred svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,.3)); }
 .strip span { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strip small { margin-top: -5px; color: var(--muted); font-size: 11px; }
+.liked-list time { flex: none; color: var(--muted); font-size: 12px; }
 .admin-panel form { display: grid; gap: 12px; margin-bottom: 22px; }
 .admin-panel .field-label { margin-bottom: -4px; }
 .admin-list { display: grid; gap: 8px; margin-top: 10px; max-height: 40vh; overflow-y: auto; }
@@ -698,7 +700,8 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .messages-empty p { max-width: 260px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .auth-card .forgot { display: block; margin: 12px auto 0; font-size: 12px; }
 /* in-app banner for new messages and matches (App.jsx InAppBanner) */
-.in-app-banner { position: fixed; top: calc(12px + var(--safe-t, 0px)); left: 50%; z-index: 70; width: min(380px, calc(100vw - 24px)); padding: 10px 14px 10px 10px; border: 1px solid var(--line); border-radius: 20px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); box-shadow: 0 14px 40px rgba(25,30,27,.16); text-align: left; cursor: pointer; transform: translateX(-50%); animation: banner-in .35s var(--ease-out), banner-out .3s ease-in 4.7s forwards; }
+.in-app-banner { position: fixed; top: calc(12px + var(--safe-t, 0px)); left: 50%; z-index: 70; width: min(380px, calc(100vw - 24px)); padding: 10px 14px 10px 10px; border: 1px solid var(--line); border-radius: 20px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); box-shadow: 0 14px 40px rgba(25,30,27,.16); text-align: left; cursor: pointer; transform: translate(calc(-50% + var(--bx, 0px)), var(--by, 0px)); opacity: var(--bo, 1); transition: transform .2s var(--ease-out), opacity .2s; touch-action: none; animation: banner-in .35s var(--ease-out), banner-out .3s ease-in 4.7s forwards; }
+.in-app-banner.dragging { transition: none; animation-play-state: paused; }
 .in-app-banner .avatar-wrap { width: 42px; height: 42px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; color: var(--coral); background: var(--soft); }
 .in-app-banner .avatar-wrap img, .in-app-banner .avatar-wrap .placeholder { width: 100%; height: 100%; object-fit: cover; }
 .in-app-banner div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -757,3 +760,7 @@ button.chat-person { border: 0; padding: 0; background: none; text-align: left; 
 .side-profile { text-align: left; }
 .side-profile strong { display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; }
 .side-profile strong .verified { margin-left: 0; flex: none; }
+
+/* "Something new" on Explorar: a dot, not a count */
+.side-link i.dot { min-width: 0; width: 9px; height: 9px; padding: 0; }
+.bottom-nav i.dot { width: 11px; height: 11px; top: 8px; }
