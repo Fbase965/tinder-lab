@@ -50,6 +50,14 @@ export default function App() {
 // The domain must be one nobody else can receive mail for: vercel.app DNS is Vercel's alone (no MX on it).
 // Requires "Confirm email" OFF in Supabase Auth settings. Changing it needs supabase/email-domain.sql.
 const usernameEmail = (u) => `${u}@users.tinder-lab.vercel.app`
+// Invite links are /?ref=<username>; kept until sign-up in case the page reloads (supabase/referrals.sql).
+const INVITE_REF = (() => {
+  try {
+    const r = new URLSearchParams(location.search).get('ref')
+    if (r) localStorage.setItem('faisca-ref', r.toLowerCase())
+    return localStorage.getItem('faisca-ref')
+  } catch { return null }
+})()
 const ERRORS = {
   'Invalid login credentials': 'Username ou password errados.',
   'User already registered': 'Esse username já existe.',
@@ -117,7 +125,8 @@ function Auth() {
     if (signUp && password !== confirm) return setMsg('As passwords não coincidem.')
     if (captcha.enabled && !captcha.token) return setMsg('Confirma que não és um robô.')
     setBusy(true)
-    const creds = { email: usernameEmail(u), password, options: captcha.enabled ? { captchaToken: captcha.token } : undefined }
+    const creds = { email: usernameEmail(u), password, options: {
+      ...(captcha.enabled && { captchaToken: captcha.token }), ...(signUp && INVITE_REF && { data: { ref: INVITE_REF } }) } }
     const { error } = signUp ? await supabase.auth.signUp(creds) : await supabase.auth.signInWithPassword(creds)
     setBusy(false)
     captcha.reset()

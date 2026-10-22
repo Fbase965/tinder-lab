@@ -195,7 +195,11 @@ function PlusAdmin({ toast }) {
   const [username, setUsername] = useState('')
   const [days, setDays] = useState(30)
   const [busy, setBusy] = useState(false)
-  const load = () => supabase.rpc('admin_list_premium').then(({ data }) => setList(data ?? []))
+  const [invited, setInvited] = useState(null)
+  const load = () => {
+    supabase.rpc('admin_list_premium').then(({ data }) => setList(data ?? []))
+    supabase.rpc('admin_referrals').then(({ data }) => setInvited(data ?? []))
+  }
   useEffect(() => { load() }, [])
   const set = async (user, d) => {
     setBusy(true)
@@ -217,6 +221,17 @@ function PlusAdmin({ toast }) {
       </div>
       <button className="primary-button" disabled={busy}>Dar faísca+</button>
     </form>
+    {invited?.length > 0 && <>
+      <span className="settings-label">CONVIDARAM 5+ AMIGOS</span>
+      <div className="admin-list">
+        {invited.map((u) => (
+          <div key={u.username}>
+            <div><strong>@{u.username}</strong><span>{u.convites} convites{u.premium && ' · já tem faísca+'}</span></div>
+            {!u.premium && <button className="link" disabled={busy} onClick={() => set(u.username, 30)}>Dar 1 mês</button>}
+          </div>
+        ))}
+      </div>
+    </>}
     <span className="settings-label">COM FAÍSCA+ ({list?.length ?? '…'})</span>
     <div className="admin-list">
       {list?.map((u) => (

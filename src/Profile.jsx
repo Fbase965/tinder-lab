@@ -126,6 +126,7 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
                 : 'Ganha o selo de verificado e recupera a password'}</span></div>
               {myEmail ? <Badges p={{ verified: true }} /> : <Icon name="chevron" />}
             </button>
+            {username && <InviteRow username={username} toast={toast} />}
             <NotificationsRow toast={toast} />
             {plan.isAdmin && (
               <button onClick={() => setAdmin(true)}>
@@ -157,6 +158,26 @@ export function Profile({ me, setMe, complete, hasLocation, setHasLocation, matc
         {renaming && <UsernameModal current={username} onClose={() => setRenaming(false)} onChanged={setUsername} toast={toast} />}
       </div>
     </div>
+  )
+}
+
+// Invite 5 people who create a profile and the admins get a push to give you faísca+ (supabase/referrals.sql).
+function InviteRow({ username, toast }) {
+  const [count, setCount] = useState(null)
+  useEffect(() => { supabase.rpc('my_referrals').then(({ data }) => setCount(data ?? 0)) }, [])
+  const link = `${location.origin}/?ref=${username}`
+  const share = async () => {
+    if (navigator.share) return navigator.share({ title: 'faísca', text: 'Junta-te à faísca', url: link }).catch(() => {})
+    try { await navigator.clipboard.writeText(link); toast('Link copiado') } catch { toast(link) }
+  }
+  return (
+    <button onClick={share}>
+      <i className="coral"><Icon name="sparkles" /></i>
+      <div><strong>Convida amigos</strong><span>{count >= 5
+        ? `${count} convites · já avisámos a equipa para te dar faísca+`
+        : `${count ?? '…'}/5 amigos com perfil = faísca+ grátis`}</span></div>
+      <Icon name="chevron" />
+    </button>
   )
 }
 
