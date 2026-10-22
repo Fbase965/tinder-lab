@@ -267,9 +267,12 @@ function Message({ m, mine, seen, quoted, author, mySide, open, onToggle, onOpen
     if (Math.abs(mx) + Math.abs(my) > 8) clearTimeout(press.current)
     if (!d.axis && Math.abs(mx) + Math.abs(my) > 8) d.axis = mx > 0 && Math.abs(mx) > Math.abs(my) ? 'x' : 'y'
     if (d.axis !== 'x') return
-    const x = Math.min(mx, 90) * (mx > SWIPE_REPLY ? 0.6 : 1)
-    if (!d.hit && x >= SWIPE_REPLY) { d.hit = true; navigator.vibrate?.(10) }
-    setDx(x)
+    // Decide on the finger's distance, not the damped one (damping kept it below the threshold, so it never fired).
+    // Dragging back under the threshold before letting go cancels.
+    const hit = mx >= SWIPE_REPLY
+    if (hit && !d.hit) navigator.vibrate?.(10)
+    d.hit = hit
+    setDx(hit ? SWIPE_REPLY + (Math.min(mx, 140) - SWIPE_REPLY) * 0.4 : Math.max(0, mx))
   }
   const touchEnd = (e) => {
     clearTimeout(press.current)
